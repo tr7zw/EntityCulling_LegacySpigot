@@ -52,7 +52,7 @@ public class CullTask implements Runnable {
 						// ChunkSnapshot chunkSnapshot = instance.blockChangeListener.getChunk(loc);
 						BlockState[] tiles = instance.blockChangeListener.getChunkTiles(loc);
 						for (BlockState block : tiles) {
-							if (block.getType() == Material.CHEST) {
+							//if (block.getType() == Material.CHEST) {
 								boolean canSee = OcclusionCullingUtils.isAABBVisible(block.getLocation(), blockAABB,
 										player.getEyeLocation(), false);
 								boolean hidden = instance.cache.isHidden(player, block.getLocation());
@@ -63,7 +63,7 @@ public class CullTask implements Runnable {
 									instance.cache.setHidden(player, block.getLocation(), true);
 									player.sendBlockChange(block.getLocation(), Material.BARRIER, (byte) 0);
 								}
-							}
+							//}
 						}
 						Entity[] entities = instance.blockChangeListener.getChunkEntities(loc);
 						Int2ObjectMap<EntityTracker> trackers = ((WorldServer) ((CraftEntity) player).getHandle().world).getChunkProvider().playerChunkMap.trackedEntities;

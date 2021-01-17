@@ -1,9 +1,12 @@
 package dev.tr7zw.entityculling.occlusionculling;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -14,6 +17,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.Chest;
 import org.bukkit.entity.Entity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -84,7 +88,6 @@ public class BlockChangeListener implements Listener {
 
 	public void handleChunkLoadSync(Chunk loadedChunk) {
 		updateCachedChunkSync(new ChunkCoords(loadedChunk.getWorld().getName(), loadedChunk.getX(), loadedChunk.getZ()), loadedChunk);
-		//TransportPipes.instance.containerBlockUtils.handleChunkLoadSync(loadedChunk);
 	}
 
 	public void handleExplosionSync(List<Block> blockList) {
@@ -111,10 +114,22 @@ public class BlockChangeListener implements Listener {
 			@Override
 			public void run() {
 				cachedChunkSnapshots.put(cc, chunk.getChunkSnapshot());
-				cachedChunkTiles.put(cc, chunk.getTileEntities());
+				cachedChunkTiles.put(cc, filterTiles(chunk.getTileEntities()));
 				cachedChunkEntities.put(cc, chunk.getEntities());
 			}
 		});
+	}
+	
+	private BlockState[] filterTiles(BlockState[] tiles) {
+		if(tiles.length == 0)return tiles;
+		List<BlockState> list = new ArrayList(Arrays.asList(tiles)); // the arrays as list is not modifyable
+		ListIterator<BlockState> it = list.listIterator();
+		while(it.hasNext()) {
+			if(it.next() instanceof Chest) {
+				it.remove();
+			}
+		}
+		return list.toArray(new BlockState[0]);
 	}
 	
 	public void updateCachedChunkEntitiesSync(final ChunkCoords cc, final Chunk chunk) {
