@@ -31,7 +31,7 @@ public class CullingPlugin extends JavaPlugin {
 		cache = new PlayerCache();
 		Bukkit.getPluginManager().registerEvents(blockChangeListener, this);
 		Bukkit.getPluginManager().registerEvents(cache, this);
-		Bukkit.getScheduler().runTaskTimerAsynchronously(instance, new CullTask(this), 3, 3);
+		Bukkit.getScheduler().runTaskTimerAsynchronously(instance, new CullTask(this), 2, 2);
 		ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(this, ListenerPriority.NORMAL,
 				PacketType.Play.Server.SPAWN_ENTITY_LIVING, PacketType.Play.Server.SPAWN_ENTITY) {
 			@Override

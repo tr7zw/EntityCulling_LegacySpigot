@@ -23,60 +23,13 @@ public class OcclusionCullingUtils {
 			Location centerYMax = center.clone().add(0, height / 2, 0);
 			Location centerZMin = center.clone().add(0, 0, -depth / 2);
 			Location centerZMax = center.clone().add(0, 0, depth / 2);
-			boolean centerXMinBlocked = false;
-			Vector[] locs = gridRaytrace(playerLoc, centerXMin.subtract(playerLoc).toVector());
-			for (Vector v : locs) {
-				if (isBlockAtLocationOccluding(v.toLocation(playerLoc.getWorld()))) {
-					centerXMinBlocked = true;
-					break;
-				}
-			}
-			if(!centerXMinBlocked)return true;
-			boolean centerXMaxBlocked = false;
-			locs = gridRaytrace(playerLoc, centerXMax.subtract(playerLoc).toVector());
-			for (Vector v : locs) {
-				if (isBlockAtLocationOccluding(v.toLocation(playerLoc.getWorld()))) {
-					centerXMaxBlocked = true;
-					break;
-				}
-			}
-			if(!centerXMaxBlocked)return true;
-			boolean centerYMinBlocked = false;
-			locs = gridRaytrace(playerLoc, centerYMin.subtract(playerLoc).toVector());
-			for (Vector v : locs) {
-				if (isBlockAtLocationOccluding(v.toLocation(playerLoc.getWorld()))) {
-					centerYMinBlocked = true;
-					break;
-				}
-			}
-			if(!centerYMinBlocked)return true;
-			boolean centerYMaxBlocked = false;
-			locs = gridRaytrace(playerLoc, centerYMax.subtract(playerLoc).toVector());
-			for (Vector v : locs) {
-				if (isBlockAtLocationOccluding(v.toLocation(playerLoc.getWorld()))) {
-					centerYMaxBlocked = true;
-					break;
-				}
-			}
-			if(!centerYMaxBlocked)return true;
-			boolean centerZMinBlocked = false;
-			locs = gridRaytrace(playerLoc, centerZMin.subtract(playerLoc).toVector());
-			for (Vector v : locs) {
-				if (isBlockAtLocationOccluding(v.toLocation(playerLoc.getWorld()))) {
-					centerZMinBlocked = true;
-					break;
-				}
-			}
-			if(!centerZMinBlocked)return true;
-			boolean centerZMaxBlocked = false;
-			locs = gridRaytrace(playerLoc, centerZMax.subtract(playerLoc).toVector());
-			for (Vector v : locs) {
-				if (isBlockAtLocationOccluding(v.toLocation(playerLoc.getWorld()))) {
-					centerZMaxBlocked = true;
-					break;
-				}
-			}
-			if(!centerZMaxBlocked)return true;
+
+			if(isVisible(playerLoc, centerXMin.subtract(playerLoc).toVector()))return true;
+			if(isVisible(playerLoc, centerXMax.subtract(playerLoc).toVector()))return true;
+			if(isVisible(playerLoc, centerYMin.subtract(playerLoc).toVector()))return true;
+			if(isVisible(playerLoc, centerYMax.subtract(playerLoc).toVector()))return true;
+			if(isVisible(playerLoc, centerZMin.subtract(playerLoc).toVector()))return true;
+			if(isVisible(playerLoc, centerZMax.subtract(playerLoc).toVector()))return true;
 			return false;
 
 		} catch (Exception exception) {
@@ -84,50 +37,13 @@ public class OcclusionCullingUtils {
 		}
 		return true;
 	}
-
-	private static boolean isBlockAtLocationOccluding(Location loc) {
-		try {
-			ChunkSnapshot snapshot = null;
-			int chunkX = (int) Math.floor(loc.getBlockX() / 16d);
-			int chunkZ = (int) Math.floor(loc.getBlockZ() / 16d);
-			ChunkCoords cc = new ChunkCoords(loc.getWorld().getName(), chunkX, chunkZ);
-			if (CullingPlugin.instance.blockChangeListener.cachedChunkSnapshots.containsKey(cc)) {
-				snapshot = CullingPlugin.instance.blockChangeListener.cachedChunkSnapshots.get(cc);
-			}
-			if (snapshot == null) {
-				return false;
-			}
-			int relativeX = loc.getBlockX() % 16;
-			if (relativeX < 0) {
-				relativeX = 16 + relativeX;
-			}
-			int relativeZ = loc.getBlockZ() % 16;
-			if (relativeZ < 0) {
-				relativeZ = 16 + relativeZ;
-			}
-			if (relativeX < 0 || relativeX > 15) {
-				return false;
-			}
-			if (relativeZ < 0 || relativeZ > 15) {
-				return false;
-			}
-			if (loc.getBlockY() < 0 || loc.getBlockY() > 255) {
-				return false;
-			}
-			Material material = snapshot.getBlockType(relativeX, loc.getBlockY(), relativeZ);
-			return material.isOccluding() && material != Material.SPAWNER;
-		} catch (Exception e) {
-			e.printStackTrace();
-			return false;
-		}
-	}
-
+	
 	/**
 	 * returns the grid cells that intersect with this vector<br>
 	 * <a href=
 	 * "http://playtechs.blogspot.de/2007/03/raytracing-on-grid.html">http://playtechs.blogspot.de/2007/03/raytracing-on-grid.html</a>
 	 */
-	private static Vector[] gridRaytrace(Location start, Vector vector) {
+	private static boolean isVisible(Location start, Vector vector) {
 
 		// coordinates of start and target point
 		double x0 = start.getX();
@@ -154,10 +70,6 @@ public class OcclusionCullingUtils {
 		// of the total vector length
 		double dt_dy = 1f / dy;
 		double dt_dz = 1f / dz;
-
-		// fraction of the total vector length
-		// determines the progress of the algorithm
-		double t = 0;
 
 		// total amount of intersected cells
 		int n = 1;
@@ -220,33 +132,65 @@ public class OcclusionCullingUtils {
 																// the first cell
 		}
 
-		// now, the total amount of intersecting cells (n) is correct
-		Vector[] intersectingCells = new Vector[n];
-
+		int chunkX = (int) Math.floor(x / 16d);
+		int chunkZ = (int) Math.floor(z / 16d);
+		String worldName = start.getWorld().getName();
+		ChunkCoords cc = new ChunkCoords(worldName, chunkX, chunkZ);
+		ChunkSnapshot snapshot = CullingPlugin.instance.blockChangeListener.cachedChunkSnapshots.get(cc);
+		
+		if(snapshot == null)return false;
+		
 		// iterate through all intersecting cells (n times)
 		for (; n > 0; n--) {
 
 			// save current cell
-			intersectingCells[n - 1] = new Vector(x, y, z);
+			Vector cp = new Vector(x, y, z);
+			chunkX = (int) Math.floor(x / 16d);
+			chunkZ = (int) Math.floor(z / 16d);
+			if(cc.chunkX != chunkX || cc.chunkZ != chunkZ) {
+				cc = new ChunkCoords(worldName, chunkX, chunkZ);
+				snapshot = CullingPlugin.instance.blockChangeListener.cachedChunkSnapshots.get(cc);
+				if(snapshot == null)return false;
+			}
+			
+			int relativeX = x % 16;
+			if (relativeX < 0) {
+				relativeX = 16 + relativeX;
+			}
+			int relativeZ = z % 16;
+			if (relativeZ < 0) {
+				relativeZ = 16 + relativeZ;
+			}
+			if (relativeX < 0 || relativeX > 15) {
+				return false;
+			}
+			if (relativeZ < 0 || relativeZ > 15) {
+				return false;
+			}
+			if (y < 0 || y > 255) {
+				return false;
+			}
+			Material material = snapshot.getBlockType(relativeX, cp.getBlockY(), relativeZ);
+			if(material.isOccluding() && material != Material.SPAWNER) {
+				return false;
+			}
+			
 
 			if (t_next_y < t_next_x && t_next_y < t_next_z) { // next cell is upwards/downwards because the distance to the next vertical
 				// intersection point is smaller than to the next horizontal intersection point
 				y += y_inc; // move up/down
-				t = t_next_y;
 				t_next_y += dt_dy; // update next vertical intersection point
 			} else if (t_next_x < t_next_y && t_next_x < t_next_z) { // next cell is right/left
 				x += x_inc; // move right/left
-				t = t_next_x;
 				t_next_x += dt_dx; // update next horizontal intersection point
 			} else {
 				z += z_inc; // move right/left
-				t = t_next_z;
 				t_next_z += dt_dz; // update next horizontal intersection point
 			}
 
 		}
 
-		return intersectingCells;
+		return true;
 	}
 
 }

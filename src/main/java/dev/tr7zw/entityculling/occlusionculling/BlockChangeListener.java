@@ -125,7 +125,7 @@ public class BlockChangeListener implements Listener {
 		List<BlockState> list = new ArrayList(Arrays.asList(tiles)); // the arrays as list is not modifyable
 		ListIterator<BlockState> it = list.listIterator();
 		while(it.hasNext()) {
-			if(it.next() instanceof Chest) {
+			if(!(it.next() instanceof Chest)) {
 				it.remove();
 			}
 		}
