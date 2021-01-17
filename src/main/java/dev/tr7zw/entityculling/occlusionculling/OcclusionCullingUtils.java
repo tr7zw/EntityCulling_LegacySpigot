@@ -24,12 +24,19 @@ public class OcclusionCullingUtils {
 			Location centerZMin = center.clone().add(0, 0, -depth / 2);
 			Location centerZMax = center.clone().add(0, 0, depth / 2);
 
-			if(isVisible(playerLoc, centerXMin.subtract(playerLoc).toVector()))return true;
-			if(isVisible(playerLoc, centerXMax.subtract(playerLoc).toVector()))return true;
 			if(isVisible(playerLoc, centerYMin.subtract(playerLoc).toVector()))return true;
 			if(isVisible(playerLoc, centerYMax.subtract(playerLoc).toVector()))return true;
-			if(isVisible(playerLoc, centerZMin.subtract(playerLoc).toVector()))return true;
-			if(isVisible(playerLoc, centerZMax.subtract(playerLoc).toVector()))return true;
+			if(centerXMin.distanceSquared(playerLoc) > centerXMax.distanceSquared(playerLoc)) {
+				if(isVisible(playerLoc, centerXMin.subtract(playerLoc).toVector()))return true;
+			}else {
+				if(isVisible(playerLoc, centerXMax.subtract(playerLoc).toVector()))return true;
+			}
+			if(centerZMin.distanceSquared(playerLoc) > centerZMax.distanceSquared(playerLoc)) {
+				if(isVisible(playerLoc, centerZMin.subtract(playerLoc).toVector()))return true;
+			}else {
+				if(isVisible(playerLoc, centerZMax.subtract(playerLoc).toVector()))return true;
+			}
+
 			return false;
 
 		} catch (Exception exception) {

@@ -15,10 +15,15 @@ import org.bukkit.Chunk;
 import org.bukkit.ChunkSnapshot;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.block.Banner;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
+import org.bukkit.block.CreatureSpawner;
+import org.bukkit.block.EnchantingTable;
+import org.bukkit.block.Skull;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Shulker;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -125,7 +130,8 @@ public class BlockChangeListener implements Listener {
 		List<BlockState> list = new ArrayList(Arrays.asList(tiles)); // the arrays as list is not modifyable
 		ListIterator<BlockState> it = list.listIterator();
 		while(it.hasNext()) {
-			if(!(it.next() instanceof Chest)) {
+			BlockState state = it.next();
+			if(!(state instanceof Chest || state instanceof Shulker || state instanceof CreatureSpawner || state instanceof EnchantingTable || state instanceof Banner || state instanceof Skull)) {
 				it.remove();
 			}
 		}

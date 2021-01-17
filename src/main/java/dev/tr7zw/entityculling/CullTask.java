@@ -1,6 +1,8 @@
 package dev.tr7zw.entityculling;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -18,12 +20,16 @@ import org.bukkit.entity.Player;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketContainer;
+import com.mojang.datafixers.util.Pair;
 
 import dev.tr7zw.entityculling.occlusionculling.OcclusionCullingUtils;
 import net.minecraft.server.v1_16_R3.EntityLiving;
 import net.minecraft.server.v1_16_R3.EntityPlayer;
+import net.minecraft.server.v1_16_R3.EnumItemSlot;
+import net.minecraft.server.v1_16_R3.ItemStack;
 import net.minecraft.server.v1_16_R3.Packet;
 import net.minecraft.server.v1_16_R3.PacketPlayOutEntityDestroy;
+import net.minecraft.server.v1_16_R3.PacketPlayOutEntityEquipment;
 import net.minecraft.server.v1_16_R3.PacketPlayOutEntityMetadata;
 import net.minecraft.server.v1_16_R3.PacketPlayOutSpawnEntity;
 import net.minecraft.server.v1_16_R3.PacketPlayOutSpawnEntityLiving;
@@ -87,6 +93,12 @@ public class CullTask implements Runnable {
 									PacketPlayOutSpawnEntityLiving packet = new PacketPlayOutSpawnEntityLiving(
 											(EntityLiving) ((CraftEntity) entity).getHandle());
 									sendPacket(player, PacketType.Play.Server.SPAWN_ENTITY_LIVING, packet);
+									List<Pair<EnumItemSlot, ItemStack>> armor = new ArrayList<>();
+									for(EnumItemSlot slot : EnumItemSlot.values()) {
+										armor.add(Pair.of(slot, ((EntityLiving) ((CraftEntity) entity).getHandle()).getEquipment(slot)));
+									}
+									PacketPlayOutEntityEquipment equip = new PacketPlayOutEntityEquipment(entity.getEntityId(), armor);
+									sendPacket(player, PacketType.Play.Server.ENTITY_EQUIPMENT, equip);
 								}else {
 									PacketPlayOutSpawnEntity packet = new PacketPlayOutSpawnEntity(
 											((CraftEntity) entity).getHandle());
