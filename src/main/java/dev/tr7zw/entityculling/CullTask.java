@@ -22,7 +22,7 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketContainer;
 import com.mojang.datafixers.util.Pair;
 
-import dev.tr7zw.entityculling.occlusionculling.OcclusionCullingUtils;
+import dev.tr7zw.entityculling.occlusionculling.OcclusionCullingInstance;
 import net.minecraft.server.v1_16_R3.EntityLiving;
 import net.minecraft.server.v1_16_R3.EntityPlayer;
 import net.minecraft.server.v1_16_R3.EnumItemSlot;
@@ -41,6 +41,7 @@ public class CullTask implements Runnable {
 	private CullingPlugin instance;
 	private AxisAlignedBB blockAABB = new AxisAlignedBB(0d, 0d, 0d, 1d, 1d, 1d);
 	private AxisAlignedBB entityAABB = new AxisAlignedBB(0d, 0d, 0d, 1d, 2d, 1d);
+	private OcclusionCullingInstance culling = new OcclusionCullingInstance();
 
 	public CullTask(CullingPlugin pl) {
 		instance = pl;
@@ -51,6 +52,7 @@ public class CullTask implements Runnable {
 	public void run() {
 		long start = System.currentTimeMillis();
 		for (Player player : Bukkit.getOnlinePlayers()) {
+			culling.resetCache();
 			for (int x = -3; x <= 3; x++) {
 				for (int y = -3; y <= 3; y++) {
 					Location loc = player.getLocation().add(x * 16, 0, y * 16);
@@ -59,7 +61,7 @@ public class CullTask implements Runnable {
 						BlockState[] tiles = instance.blockChangeListener.getChunkTiles(loc);
 						for (BlockState block : tiles) {
 							//if (block.getType() == Material.CHEST) {
-								boolean canSee = OcclusionCullingUtils.isAABBVisible(block.getLocation(), blockAABB,
+								boolean canSee = culling.isAABBVisible(block.getLocation(), blockAABB,
 										player.getEyeLocation(), false);
 								boolean hidden = instance.cache.isHidden(player, block.getLocation());
 								if (hidden && canSee) {
@@ -82,7 +84,7 @@ public class CullTask implements Runnable {
 							if(!tracker.trackedPlayers.contains(nmsPlayer)){
 								continue;
 							}
-							boolean canSee = OcclusionCullingUtils.isAABBVisible(entity.getLocation(), entityAABB,
+							boolean canSee = culling.isAABBVisible(entity.getLocation(), entityAABB,
 									player.getEyeLocation(), true);
 							boolean hidden = instance.cache.isHidden(player, entity);
 							if (hidden && canSee) {
