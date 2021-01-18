@@ -36,6 +36,12 @@ import net.minecraft.server.v1_16_R3.PacketPlayOutSpawnEntityLiving;
 import net.minecraft.server.v1_16_R3.PlayerChunkMap.EntityTracker;
 import net.minecraft.server.v1_16_R3.WorldServer;
 
+/**
+ * Todo: cleanup this mess
+ * 
+ * @author tr7zw
+ *
+ */
 public class CullTask implements Runnable {
 
 	private CullingPlugin instance;
