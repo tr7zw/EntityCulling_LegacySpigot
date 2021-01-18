@@ -49,7 +49,7 @@ public class OcclusionCullingUtils {
 		return true;
 	}
 	
-	private static byte[] cache = new byte[20000];
+	private static byte[] cache = new byte[40000];
 	
 	/**
 	 * returns the grid cells that intersect with this vector<br>
@@ -65,8 +65,8 @@ public class OcclusionCullingUtils {
 			maxY = Math.max(maxY, Math.abs(targets[i].getBlockY()));
 			maxZ = Math.max(maxZ, Math.abs(targets[i].getBlockZ()));
 		}
-		int size = maxX * maxY * maxZ;
-		if(size > 20000)return false;
+		int size = (maxX+1) * (maxY+1) * (maxZ+1);
+		if(size > 40000)return false;
 		Arrays.fill(cache, (byte)0);
 		
 		for(int v = 0; v < targets.length; v++) {
