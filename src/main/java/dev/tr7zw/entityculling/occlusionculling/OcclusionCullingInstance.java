@@ -49,7 +49,7 @@ public class OcclusionCullingInstance {
 		return true;
 	}
 	
-	private final int reach = 32;
+	private final int reach = 50;
 	private final byte[] cache = new byte[(reach*2)*(reach*2)*(reach*2)];
 	
 	public void resetCache() {
