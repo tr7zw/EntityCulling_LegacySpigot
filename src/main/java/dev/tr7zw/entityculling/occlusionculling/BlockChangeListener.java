@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -39,19 +42,21 @@ import dev.tr7zw.entityculling.CullingPlugin;
 
 public class BlockChangeListener implements Listener {
 
-	public Map<ChunkCoords, ChunkSnapshot> cachedChunkSnapshots = Collections.synchronizedMap(new HashMap<ChunkCoords, ChunkSnapshot>());
-	public Map<ChunkCoords, BlockState[]> cachedChunkTiles = Collections.synchronizedMap(new HashMap<ChunkCoords, BlockState[]>());
-	public Map<ChunkCoords, Entity[]> cachedChunkEntities = Collections.synchronizedMap(new HashMap<ChunkCoords, Entity[]>());
+	public final Map<ChunkCoords, ChunkSnapshot> cachedChunkSnapshots = new HashMap<ChunkCoords, ChunkSnapshot>();
+	public final Map<ChunkCoords, BlockState[]> cachedChunkTiles = new HashMap<ChunkCoords, BlockState[]>();
+	public final Map<ChunkCoords, Entity[]> cachedChunkEntities = new HashMap<ChunkCoords, Entity[]>();
+	private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+	private final WriteLock writeLock = lock.writeLock();
+	private final ReadLock readLock = lock.readLock();
 
 	public BlockChangeListener() {
-		for(World world : Bukkit.getWorlds()) {
-			for(Chunk chunk : world.getLoadedChunks()) {
+		for (World world : Bukkit.getWorlds()) {
+			for (Chunk chunk : world.getLoadedChunks()) {
 				handleChunkLoadSync(chunk);
 			}
 		}
 	}
-	
-	
+
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onBlockPlace(BlockPlaceEvent e) {
 		Chunk chunk = e.getBlock().getChunk();
@@ -84,7 +89,7 @@ public class BlockChangeListener implements Listener {
 	public void onEntityExplode(EntityExplodeEvent e) {
 		handleExplosionSync(e.blockList());
 	}
-	
+
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onSpawn(EntitySpawnEvent event) {
 		Chunk chunk = event.getEntity().getLocation().getChunk();
@@ -92,7 +97,8 @@ public class BlockChangeListener implements Listener {
 	}
 
 	public void handleChunkLoadSync(Chunk loadedChunk) {
-		updateCachedChunkSync(new ChunkCoords(loadedChunk.getWorld().getName(), loadedChunk.getX(), loadedChunk.getZ()), loadedChunk);
+		updateCachedChunkSync(new ChunkCoords(loadedChunk.getWorld().getName(), loadedChunk.getX(), loadedChunk.getZ()),
+				loadedChunk);
 	}
 
 	public void handleExplosionSync(List<Block> blockList) {
@@ -108,59 +114,87 @@ public class BlockChangeListener implements Listener {
 	}
 
 	public void updateCachedChunkSync(final ChunkCoords cc, final Chunk chunk) {
+
 		if (chunk == null) {
-			cachedChunkSnapshots.remove(cc);
-			cachedChunkTiles.remove(cc);
-			cachedChunkEntities.remove(cc);
-			return;
+			try {
+				writeLock.lock();
+				cachedChunkSnapshots.remove(cc);
+				cachedChunkTiles.remove(cc);
+				cachedChunkEntities.remove(cc);
+				return;
+			} finally {
+				writeLock.unlock();
+			}
 		}
 		CullingPlugin.runTask(new Runnable() {
 
 			@Override
 			public void run() {
-				cachedChunkSnapshots.put(cc, chunk.getChunkSnapshot());
-				cachedChunkTiles.put(cc, filterTiles(chunk.getTileEntities()));
-				cachedChunkEntities.put(cc, chunk.getEntities());
+				try {
+					writeLock.lock();
+					cachedChunkSnapshots.put(cc, chunk.getChunkSnapshot());
+					cachedChunkTiles.put(cc, filterTiles(chunk.getTileEntities()));
+					cachedChunkEntities.put(cc, chunk.getEntities());
+				} finally {
+					writeLock.unlock();
+				}
 			}
 		});
 	}
-	
+
 	private BlockState[] filterTiles(BlockState[] tiles) {
-		if(tiles.length == 0)return tiles;
+		if (tiles.length == 0)
+			return tiles;
 		List<BlockState> list = new ArrayList(Arrays.asList(tiles)); // the arrays as list is not modifyable
 		ListIterator<BlockState> it = list.listIterator();
-		while(it.hasNext()) {
+		while (it.hasNext()) {
 			BlockState state = it.next();
-			if(!(state instanceof Chest || state instanceof Shulker || state instanceof CreatureSpawner || state instanceof EnchantingTable || state instanceof Banner || state instanceof Skull)) {
+			if (!(state instanceof Chest || state instanceof Shulker || state instanceof CreatureSpawner
+					|| state instanceof EnchantingTable || state instanceof Banner || state instanceof Skull)) {
 				it.remove();
 			}
 		}
 		return list.toArray(new BlockState[0]);
 	}
-	
+
 	public void updateCachedChunkEntitiesSync(final ChunkCoords cc, final Chunk chunk) {
 		if (chunk == null) {
-			cachedChunkSnapshots.remove(cc);
-			cachedChunkTiles.remove(cc);
-			cachedChunkEntities.remove(cc);
-			return;
+			try {
+				writeLock.lock();
+				cachedChunkSnapshots.remove(cc);
+				cachedChunkTiles.remove(cc);
+				cachedChunkEntities.remove(cc);
+				return;
+			} finally {
+				writeLock.unlock();
+			}
 		}
 		CullingPlugin.runTask(new Runnable() {
 
 			@Override
 			public void run() {
-				cachedChunkEntities.put(cc, chunk.getEntities());
+				try {
+					writeLock.lock();
+					cachedChunkEntities.put(cc, chunk.getEntities());
+				} finally {
+					writeLock.unlock();
+				}
 			}
 		});
 	}
-	
+
 	public void updateCachedChunkEntitiesSync(final Set<ChunkCoords> chunks) {
 		CullingPlugin.runTask(new Runnable() {
 
 			@Override
 			public void run() {
-				for(ChunkCoords cc : chunks) {
-					cachedChunkEntities.put(cc, cc.getRealChunkSync().getEntities());
+				try {
+					writeLock.lock();
+					for (ChunkCoords cc : chunks) {
+						cachedChunkEntities.put(cc, cc.getRealChunkSync().getEntities());
+					}
+				} finally {
+					writeLock.unlock();
 				}
 			}
 		});
@@ -171,46 +205,64 @@ public class BlockChangeListener implements Listener {
 		int chunkZ = (int) Math.floor(loc.getBlockZ() / 16d);
 		return new ChunkCoords(loc.getWorld().getName(), chunkX, chunkZ);
 	}
-	
+
 	@Deprecated
 	public boolean isInLoadedChunk(Location loc) {
 		return isInLoadedChunk(getChunkCoords(loc));
 	}
-	
+
 	public boolean isInLoadedChunk(ChunkCoords cc) {
 		try {
+			readLock.lock();
 			return cachedChunkSnapshots.containsKey(cc);
 		} catch (Exception exception) {
 			exception.printStackTrace();
+		} finally {
+			readLock.unlock();
 		}
 		return false;
 	}
-	
+
 	@Deprecated
 	public ChunkSnapshot getChunk(Location loc) {
 		return getChunk(getChunkCoords(loc));
 	}
-	
+
 	public ChunkSnapshot getChunk(ChunkCoords cc) {
-		return cachedChunkSnapshots.get(cc);
+		try {
+			readLock.lock();
+			return cachedChunkSnapshots.get(cc);
+		} finally {
+			readLock.unlock();
+		}
 	}
-	
+
 	@Deprecated
 	public BlockState[] getChunkTiles(Location loc) {
 		return getChunkTiles(getChunkCoords(loc));
 	}
-	
+
 	public BlockState[] getChunkTiles(ChunkCoords cc) {
-		return cachedChunkTiles.get(cc);
+		try {
+			readLock.lock();
+			return cachedChunkTiles.get(cc);
+		} finally {
+			readLock.unlock();
+		}
 	}
-	
+
 	@Deprecated
 	public Entity[] getChunkEntities(Location loc) {
 		return getChunkEntities(getChunkCoords(loc));
 	}
-	
+
 	public Entity[] getChunkEntities(ChunkCoords cc) {
-		return cachedChunkEntities.get(cc);
+		try {
+			readLock.lock();
+			return cachedChunkEntities.get(cc);
+		} finally {
+			readLock.unlock();
+		}
 	}
 
 	public static class ChunkCoords {
