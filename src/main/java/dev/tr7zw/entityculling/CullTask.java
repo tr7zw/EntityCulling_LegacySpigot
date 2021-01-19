@@ -75,64 +75,68 @@ public class CullTask implements Runnable {
 					if (instance.blockChangeListener.isInLoadedChunk(loc)) {
 						// ChunkSnapshot chunkSnapshot = instance.blockChangeListener.getChunk(loc);
 						BlockState[] tiles = instance.blockChangeListener.getChunkTiles(loc);
-						for (BlockState block : tiles) {
-							//if (block.getType() == Material.CHEST) {
-								boolean canSee = culling.isAABBVisible(block.getLocation(), blockAABB,
-										player.getEyeLocation(), false);
-								boolean hidden = instance.cache.isHidden(player, block.getLocation());
-								if (hidden && canSee) {
-									instance.cache.setHidden(player, block.getLocation(), false);
-									player.sendBlockChange(block.getLocation(), block.getBlockData());
-								} else if (!hidden && !canSee) {
-									instance.cache.setHidden(player, block.getLocation(), true);
-									player.sendBlockChange(block.getLocation(), Material.BARRIER, (byte) 0);
-								}
-							//}
+						if(tiles != null) {
+							for (BlockState block : tiles) {
+								//if (block.getType() == Material.CHEST) {
+									boolean canSee = culling.isAABBVisible(block.getLocation(), blockAABB,
+											player.getEyeLocation(), false);
+									boolean hidden = instance.cache.isHidden(player, block.getLocation());
+									if (hidden && canSee) {
+										instance.cache.setHidden(player, block.getLocation(), false);
+										player.sendBlockChange(block.getLocation(), block.getBlockData());
+									} else if (!hidden && !canSee) {
+										instance.cache.setHidden(player, block.getLocation(), true);
+										player.sendBlockChange(block.getLocation(), Material.BARRIER, (byte) 0);
+									}
+								//}
+							}
 						}
 						Entity[] entities = instance.blockChangeListener.getChunkEntities(loc);
 						Int2ObjectMap<EntityTracker> trackers = ((WorldServer) ((CraftEntity) player).getHandle().world).getChunkProvider().playerChunkMap.trackedEntities;
 						EntityPlayer nmsPlayer = ((CraftPlayer) player).getHandle();
-						for (Entity entity : entities) {
-							EntityTracker tracker = trackers.get(entity.getEntityId());
-							if(tracker == null){
-								continue;
-							}
-							if(!tracker.trackedPlayers.contains(nmsPlayer)){
-								continue;
-							}
-							boolean canSee = culling.isAABBVisible(entity.getLocation(), entityAABB,
-									player.getEyeLocation(), true);
-							boolean hidden = instance.cache.isHidden(player, entity);
-							if (hidden && canSee) {
-								instance.cache.setHidden(player, entity, false);
-								if(entity instanceof Player) {
-									// Do nothing!
-								}else if(entity instanceof LivingEntity) {
-									PacketPlayOutSpawnEntityLiving packet = new PacketPlayOutSpawnEntityLiving(
-											(EntityLiving) ((CraftEntity) entity).getHandle());
-									sendPacket(player, PacketType.Play.Server.SPAWN_ENTITY_LIVING, packet);
-									List<Pair<EnumItemSlot, ItemStack>> armor = new ArrayList<>();
-									for(EnumItemSlot slot : EnumItemSlot.values()) {
-										armor.add(Pair.of(slot, ((EntityLiving) ((CraftEntity) entity).getHandle()).getEquipment(slot)));
-									}
-									PacketPlayOutEntityEquipment equip = new PacketPlayOutEntityEquipment(entity.getEntityId(), armor);
-									sendPacket(player, PacketType.Play.Server.ENTITY_EQUIPMENT, equip);
-								}else {
-									PacketPlayOutSpawnEntity packet = new PacketPlayOutSpawnEntity(
-											((CraftEntity) entity).getHandle());
-									sendPacket(player, PacketType.Play.Server.SPAWN_ENTITY, packet);
+						if(entities != null && trackers != null) {
+							for (Entity entity : entities) {
+								EntityTracker tracker = trackers.get(entity.getEntityId());
+								if(tracker == null){
+									continue;
 								}
-								
-								PacketPlayOutEntityMetadata metaPacket = new PacketPlayOutEntityMetadata(
-										entity.getEntityId(), ((CraftEntity) entity).getHandle().getDataWatcher(),
-										true);
-								sendPacket(player, PacketType.Play.Server.ENTITY_METADATA, metaPacket);
-							} else if (!hidden && !canSee) { // hide entity
-								if(!(entity instanceof Player) && !(entity instanceof ExperienceOrb) && !(entity instanceof Painting)) {
-									instance.cache.setHidden(player, entity, true);
-									PacketPlayOutEntityDestroy packet = new PacketPlayOutEntityDestroy(
-											entity.getEntityId());
-									sendPacket(player, PacketType.Play.Server.ENTITY_DESTROY, packet);
+								if(!tracker.trackedPlayers.contains(nmsPlayer)){
+									continue;
+								}
+								boolean canSee = culling.isAABBVisible(entity.getLocation(), entityAABB,
+										player.getEyeLocation(), true);
+								boolean hidden = instance.cache.isHidden(player, entity);
+								if (hidden && canSee) {
+									instance.cache.setHidden(player, entity, false);
+									if(entity instanceof Player) {
+										// Do nothing!
+									}else if(entity instanceof LivingEntity) {
+										PacketPlayOutSpawnEntityLiving packet = new PacketPlayOutSpawnEntityLiving(
+												(EntityLiving) ((CraftEntity) entity).getHandle());
+										sendPacket(player, PacketType.Play.Server.SPAWN_ENTITY_LIVING, packet);
+										List<Pair<EnumItemSlot, ItemStack>> armor = new ArrayList<>();
+										for(EnumItemSlot slot : EnumItemSlot.values()) {
+											armor.add(Pair.of(slot, ((EntityLiving) ((CraftEntity) entity).getHandle()).getEquipment(slot)));
+										}
+										PacketPlayOutEntityEquipment equip = new PacketPlayOutEntityEquipment(entity.getEntityId(), armor);
+										sendPacket(player, PacketType.Play.Server.ENTITY_EQUIPMENT, equip);
+									}else {
+										PacketPlayOutSpawnEntity packet = new PacketPlayOutSpawnEntity(
+												((CraftEntity) entity).getHandle());
+										sendPacket(player, PacketType.Play.Server.SPAWN_ENTITY, packet);
+									}
+									
+									PacketPlayOutEntityMetadata metaPacket = new PacketPlayOutEntityMetadata(
+											entity.getEntityId(), ((CraftEntity) entity).getHandle().getDataWatcher(),
+											true);
+									sendPacket(player, PacketType.Play.Server.ENTITY_METADATA, metaPacket);
+								} else if (!hidden && !canSee) { // hide entity
+									if(!(entity instanceof Player) && !(entity instanceof ExperienceOrb) && !(entity instanceof Painting)) {
+										instance.cache.setHidden(player, entity, true);
+										PacketPlayOutEntityDestroy packet = new PacketPlayOutEntityDestroy(
+												entity.getEntityId());
+										sendPacket(player, PacketType.Play.Server.ENTITY_DESTROY, packet);
+									}
 								}
 							}
 						}
