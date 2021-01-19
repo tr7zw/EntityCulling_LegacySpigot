@@ -63,18 +63,19 @@ public class CullTask implements Runnable {
 	public void run() {
 		long start = System.currentTimeMillis();
 		counter++;
-		Set<Chunk> entityUpdateChunks = new HashSet<>();
+		Set<ChunkCoords> entityUpdateChunks = new HashSet<>();
 		for (Player player : Bukkit.getOnlinePlayers()) {
 			culling.resetCache();
 			for (int x = -3; x <= 3; x++) {
 				for (int y = -3; y <= 3; y++) {
 					Location loc = player.getLocation().add(x * 16, 0, y * 16);
-					if(counter == 20) {
-						entityUpdateChunks.add(loc.getChunk());
+					ChunkCoords coods = instance.blockChangeListener.getChunkCoords(loc);
+					if(counter >= 20) {
+						entityUpdateChunks.add(coods);
 					}
-					if (instance.blockChangeListener.isInLoadedChunk(loc)) {
+					if (instance.blockChangeListener.isInLoadedChunk(coods)) {
 						// ChunkSnapshot chunkSnapshot = instance.blockChangeListener.getChunk(loc);
-						BlockState[] tiles = instance.blockChangeListener.getChunkTiles(loc);
+						BlockState[] tiles = instance.blockChangeListener.getChunkTiles(coods);
 						if(tiles != null) {
 							for (BlockState block : tiles) {
 								//if (block.getType() == Material.CHEST) {
@@ -91,7 +92,7 @@ public class CullTask implements Runnable {
 								//}
 							}
 						}
-						Entity[] entities = instance.blockChangeListener.getChunkEntities(loc);
+						Entity[] entities = instance.blockChangeListener.getChunkEntities(coods);
 						Int2ObjectMap<EntityTracker> trackers = ((WorldServer) ((CraftEntity) player).getHandle().world).getChunkProvider().playerChunkMap.trackedEntities;
 						EntityPlayer nmsPlayer = ((CraftPlayer) player).getHandle();
 						if(entities != null && trackers != null) {
@@ -144,13 +145,11 @@ public class CullTask implements Runnable {
 				}
 			}
 		}
-		if(counter == 20) { // Pesky entities are able to move, so we need to update these chunks entity data every now and then
+		if(counter >= 20) { // Pesky entities are able to move, so we need to update these chunks entity data every now and then
 			counter = 0;
-			for(Chunk chunk : entityUpdateChunks) {
-				CullingPlugin.instance.blockChangeListener.updateCachedChunkEntitiesSync(new ChunkCoords(chunk.getWorld().getName(), chunk.getX(), chunk.getZ()), chunk);
-			}
+				CullingPlugin.instance.blockChangeListener.updateCachedChunkEntitiesSync(entityUpdateChunks);
 		}
-		//System.out.println("Time: " + (System.currentTimeMillis() - start));
+		//Bukkit.broadcastMessage("Time: " + (System.currentTimeMillis() - start));
 	}
 	
 	private void sendPacket(Player player, PacketType type, Packet<?> packet) {

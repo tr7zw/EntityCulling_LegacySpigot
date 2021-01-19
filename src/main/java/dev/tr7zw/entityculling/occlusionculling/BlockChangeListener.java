@@ -153,12 +153,32 @@ public class BlockChangeListener implements Listener {
 			}
 		});
 	}
+	
+	public void updateCachedChunkEntitiesSync(final Set<ChunkCoords> chunks) {
+		CullingPlugin.runTask(new Runnable() {
 
+			@Override
+			public void run() {
+				for(ChunkCoords cc : chunks) {
+					cachedChunkEntities.put(cc, cc.getRealChunkSync().getEntities());
+				}
+			}
+		});
+	}
+
+	public ChunkCoords getChunkCoords(Location loc) {
+		int chunkX = (int) Math.floor(loc.getBlockX() / 16d);
+		int chunkZ = (int) Math.floor(loc.getBlockZ() / 16d);
+		return new ChunkCoords(loc.getWorld().getName(), chunkX, chunkZ);
+	}
+	
+	@Deprecated
 	public boolean isInLoadedChunk(Location loc) {
+		return isInLoadedChunk(getChunkCoords(loc));
+	}
+	
+	public boolean isInLoadedChunk(ChunkCoords cc) {
 		try {
-			int chunkX = (int) Math.floor(loc.getBlockX() / 16d);
-			int chunkZ = (int) Math.floor(loc.getBlockZ() / 16d);
-			ChunkCoords cc = new ChunkCoords(loc.getWorld().getName(), chunkX, chunkZ);
 			return cachedChunkSnapshots.containsKey(cc);
 		} catch (Exception exception) {
 			exception.printStackTrace();
@@ -166,24 +186,30 @@ public class BlockChangeListener implements Listener {
 		return false;
 	}
 	
+	@Deprecated
 	public ChunkSnapshot getChunk(Location loc) {
-		int chunkX = (int) Math.floor(loc.getBlockX() / 16d);
-		int chunkZ = (int) Math.floor(loc.getBlockZ() / 16d);
-		ChunkCoords cc = new ChunkCoords(loc.getWorld().getName(), chunkX, chunkZ);
+		return getChunk(getChunkCoords(loc));
+	}
+	
+	public ChunkSnapshot getChunk(ChunkCoords cc) {
 		return cachedChunkSnapshots.get(cc);
 	}
 	
+	@Deprecated
 	public BlockState[] getChunkTiles(Location loc) {
-		int chunkX = (int) Math.floor(loc.getBlockX() / 16d);
-		int chunkZ = (int) Math.floor(loc.getBlockZ() / 16d);
-		ChunkCoords cc = new ChunkCoords(loc.getWorld().getName(), chunkX, chunkZ);
+		return getChunkTiles(getChunkCoords(loc));
+	}
+	
+	public BlockState[] getChunkTiles(ChunkCoords cc) {
 		return cachedChunkTiles.get(cc);
 	}
 	
+	@Deprecated
 	public Entity[] getChunkEntities(Location loc) {
-		int chunkX = (int) Math.floor(loc.getBlockX() / 16d);
-		int chunkZ = (int) Math.floor(loc.getBlockZ() / 16d);
-		ChunkCoords cc = new ChunkCoords(loc.getWorld().getName(), chunkX, chunkZ);
+		return getChunkEntities(getChunkCoords(loc));
+	}
+	
+	public Entity[] getChunkEntities(ChunkCoords cc) {
 		return cachedChunkEntities.get(cc);
 	}
 
