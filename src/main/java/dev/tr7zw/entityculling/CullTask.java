@@ -2,9 +2,12 @@ package dev.tr7zw.entityculling;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.BlockState;
@@ -23,6 +26,7 @@ import com.comphenix.protocol.events.PacketContainer;
 import com.mojang.datafixers.util.Pair;
 
 import dev.tr7zw.entityculling.occlusionculling.OcclusionCullingInstance;
+import dev.tr7zw.entityculling.occlusionculling.BlockChangeListener.ChunkCoords;
 import net.minecraft.server.v1_16_R3.EntityLiving;
 import net.minecraft.server.v1_16_R3.EntityPlayer;
 import net.minecraft.server.v1_16_R3.EnumItemSlot;
@@ -45,6 +49,7 @@ import net.minecraft.server.v1_16_R3.WorldServer;
 public class CullTask implements Runnable {
 
 	private CullingPlugin instance;
+	private int counter = 0;
 	private AxisAlignedBB blockAABB = new AxisAlignedBB(0d, 0d, 0d, 1d, 1d, 1d);
 	private AxisAlignedBB entityAABB = new AxisAlignedBB(0d, 0d, 0d, 1d, 2d, 1d);
 	private OcclusionCullingInstance culling = new OcclusionCullingInstance();
@@ -57,11 +62,16 @@ public class CullTask implements Runnable {
 	@Override
 	public void run() {
 		long start = System.currentTimeMillis();
+		counter++;
+		Set<Chunk> entityUpdateChunks = new HashSet<>();
 		for (Player player : Bukkit.getOnlinePlayers()) {
 			culling.resetCache();
 			for (int x = -3; x <= 3; x++) {
 				for (int y = -3; y <= 3; y++) {
 					Location loc = player.getLocation().add(x * 16, 0, y * 16);
+					if(counter == 20) {
+						entityUpdateChunks.add(loc.getChunk());
+					}
 					if (instance.blockChangeListener.isInLoadedChunk(loc)) {
 						// ChunkSnapshot chunkSnapshot = instance.blockChangeListener.getChunk(loc);
 						BlockState[] tiles = instance.blockChangeListener.getChunkTiles(loc);
@@ -128,6 +138,12 @@ public class CullTask implements Runnable {
 						}
 					}
 				}
+			}
+		}
+		if(counter == 20) { // Pesky entities are able to move, so we need to update these chunks entity data every now and then
+			counter = 0;
+			for(Chunk chunk : entityUpdateChunks) {
+				CullingPlugin.instance.blockChangeListener.updateCachedChunkEntitiesSync(new ChunkCoords(chunk.getWorld().getName(), chunk.getX(), chunk.getZ()), chunk);
 			}
 		}
 		//System.out.println("Time: " + (System.currentTimeMillis() - start));

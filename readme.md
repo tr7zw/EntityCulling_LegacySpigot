@@ -23,4 +23,4 @@ This will not do anything to the world(modify blocks/entities), so the worst cas
 
 ## Credits
 
-[RoboTricker](https://github.com/robotricker/) created the original server side async raytracing occlusion culling implementation for [Transport-Pipes](https://github.com/RoboTricker/Transport-Pipes). I took it and optimized it to a point where it's able to do multiple thousands of traces in a second over a predefined sized area(100x100x100 currently with the player in the middle).
+[RoboTricker](https://github.com/robotricker/) created the original server side async raytracing occlusion culling implementation for [Transport-Pipes](https://github.com/RoboTricker/Transport-Pipes). I took it and optimized it to a point where it's able to do multiple thousands of traces in a second over a predefined sized area(100x100x100 currently with the player in the center of it).
