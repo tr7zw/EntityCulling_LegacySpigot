@@ -13,7 +13,7 @@ This will not do anything to the world(modify blocks/entities), so the worst cas
 
 ## Requires
 
-- Paper/Spigot 1.16.4!
+- Paper/Spigot 1.16.5!
 - ProtocolLib
 - Noteworthy: is reload save, but might leave visual artifacts till relog
 

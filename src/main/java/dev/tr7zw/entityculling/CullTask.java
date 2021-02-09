@@ -48,11 +48,12 @@ import net.minecraft.server.v1_16_R3.WorldServer;
  */
 public class CullTask implements Runnable {
 
-	private CullingPlugin instance;
+	private final CullingPlugin instance;
+	private final AxisAlignedBB blockAABB = new AxisAlignedBB(0d, 0d, 0d, 1d, 1d, 1d);
+	private final AxisAlignedBB entityAABB = new AxisAlignedBB(0d, 0d, 0d, 1d, 2d, 1d);
+	private final OcclusionCullingInstance culling = new OcclusionCullingInstance();
+
 	private int counter = 0;
-	private AxisAlignedBB blockAABB = new AxisAlignedBB(0d, 0d, 0d, 1d, 1d, 1d);
-	private AxisAlignedBB entityAABB = new AxisAlignedBB(0d, 0d, 0d, 1d, 2d, 1d);
-	private OcclusionCullingInstance culling = new OcclusionCullingInstance();
 
 	public CullTask(CullingPlugin pl) {
 		instance = pl;
@@ -61,7 +62,7 @@ public class CullTask implements Runnable {
 	@SuppressWarnings("deprecation")
 	@Override
 	public void run() {
-		long start = System.currentTimeMillis();
+		//long start = System.currentTimeMillis();
 		counter++;
 		Set<ChunkCoords> entityUpdateChunks = new HashSet<>();
 		for (Player player : Bukkit.getOnlinePlayers()) {
@@ -147,7 +148,7 @@ public class CullTask implements Runnable {
 		}
 		if(counter >= 20) { // Pesky entities are able to move, so we need to update these chunks entity data every now and then
 			counter = 0;
-				CullingPlugin.instance.blockChangeListener.updateCachedChunkEntitiesSync(entityUpdateChunks);
+			CullingPlugin.instance.blockChangeListener.updateCachedChunkEntitiesSync(entityUpdateChunks);
 		}
 		//Bukkit.broadcastMessage("Time: " + (System.currentTimeMillis() - start));
 	}

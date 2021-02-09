@@ -1,6 +1,6 @@
 name: EntityCulling
 main: dev.tr7zw.entityculling.CullingPlugin
-version: 1.0.0
+version: ${project.version}
 authors: [tr7zw]
 depend: [ProtocolLib]
 api-version: 1.16

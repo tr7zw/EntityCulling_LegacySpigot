@@ -13,11 +13,9 @@ public enum WrappedDirection {
 	DOWN(0, -1, 0);
 
 	private Vector v;
-	private String localization_key;
 
 	WrappedDirection(int x, int y, int z) {
 		this.v = new Vector(x, y, z);
-		this.localization_key = localization_key;
 	}
 
 
