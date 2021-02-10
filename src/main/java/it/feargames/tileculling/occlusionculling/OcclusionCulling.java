@@ -12,9 +12,8 @@ public class OcclusionCulling {
 
 	private final Long2ByteOpenHashMap cache = new Long2ByteOpenHashMap();
 
-	public boolean isAABBVisible(Player player, Location aabbBlock, AxisAlignedBB aabb) {
+	public boolean isAABBVisible(Player player, Vector playerEyeLocation, Location aabbBlock, AxisAlignedBB aabb) {
 		try {
-			Vector playerEyeLocation = player.getEyeLocation().toVector();
 			if (playerEyeLocation.getY() > 255 || playerEyeLocation.getY() < 0) {
 				return false;
 			}

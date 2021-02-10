@@ -5,6 +5,7 @@ import it.feargames.tileculling.occlusionculling.OcclusionCulling;
 import org.bukkit.*;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Player;
+import org.bukkit.util.Vector;
 
 import java.util.List;
 
@@ -48,6 +49,8 @@ public class CullTask implements Runnable {
 			World world = player.getWorld();
 			Location playerLocation = player.getLocation();
 
+			Vector playerEyeLocation = player.getEyeLocation().toVector();
+
 			int playerChunkX = playerLocation.getBlockX() >> 4;
 			int playerChunkZ = playerLocation.getBlockZ() >> 4;
 
@@ -69,7 +72,7 @@ public class CullTask implements Runnable {
 							blockParticles(player, Particle.VILLAGER_ANGRY, bloc);
 						}
 						*/
-						boolean canSee = culling.isAABBVisible(player, bloc, BLOCK_AABB);
+						boolean canSee = culling.isAABBVisible(player, playerEyeLocation, bloc, BLOCK_AABB);
 						/*
 						if (false && canSee && particleTick > PARTICLE_INTERVAL && player.getName().equals("sgdc3")) {
 							blockParticles(player, Particle.VILLAGER_HAPPY, bloc);
