@@ -1,6 +1,5 @@
-name: EntityCulling
-main: dev.tr7zw.entityculling.CullingPlugin
+name: TileCulling
+main: it.feargames.tileculling.CullingPlugin
 version: ${project.version}
-authors: [tr7zw]
-depend: [ProtocolLib]
+authors: [tr7zw, sgdc3]
 api-version: 1.16
