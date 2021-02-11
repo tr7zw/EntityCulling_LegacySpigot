@@ -83,7 +83,7 @@ public class BlockChangeListener implements Listener {
 		handleExplosionSync(e.blockList());
 	}
 
-	public void handleExplosionSync(List<Block> blockList) {
+	private void handleExplosionSync(List<Block> blockList) {
 		Set<Chunk> chunks = new HashSet<>();
 		for (Block block : blockList) {
 			chunks.add(block.getChunk());
@@ -93,7 +93,7 @@ public class BlockChangeListener implements Listener {
 		}
 	}
 
-	public void updateCachedChunkSync(World world, long chunkKey, final Chunk chunk) {
+	private void updateCachedChunkSync(World world, long chunkKey, final Chunk chunk) {
 		if (chunk == null) {
 			try {
 				writeLock.lock();
@@ -110,17 +110,19 @@ public class BlockChangeListener implements Listener {
 			return;
 		}
 
+		try {
+			writeLock.lock();
+			ChunkEntry entry = cachedChunks.computeIfAbsent(world, k -> new Long2ObjectOpenHashMap<>()).computeIfAbsent(chunkKey, k -> new ChunkEntry());
+			entry.snapshot = chunk.getChunkSnapshot();
+			entry.tiles = filterTiles(chunk.getTileEntities());
+		} finally {
+			writeLock.unlock();
+		}
 		// Must be done on the main thread
+		/*
 		CullingPlugin.runTask(() -> {
-			try {
-				writeLock.lock();
-				ChunkEntry entry = cachedChunks.computeIfAbsent(world, k -> new Long2ObjectOpenHashMap<>()).computeIfAbsent(chunkKey, k -> new ChunkEntry());
-				entry.snapshot = chunk.getChunkSnapshot();
-				entry.tiles = filterTiles(chunk.getTileEntities());
-			} finally {
-				writeLock.unlock();
-			}
 		});
+		*/
 	}
 
 	private List<BlockState> filterTiles(BlockState[] tiles) {
