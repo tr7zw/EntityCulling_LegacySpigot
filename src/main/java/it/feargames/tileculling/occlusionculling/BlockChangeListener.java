@@ -52,13 +52,15 @@ public class BlockChangeListener implements Listener {
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onBlockPlace(BlockPlaceEvent e) {
 		Chunk chunk = e.getBlock().getChunk();
-		updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk);
+		// We have to delay as tile entities are updated after the block has changed
+		CullingPlugin.runTask(() -> updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk));
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onBlockBreak(BlockBreakEvent e) {
 		Chunk chunk = e.getBlock().getChunk();
-		updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk);
+		// We have to delay as tile entities are updated after the block has changed
+		CullingPlugin.runTask(() -> updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk));
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -113,7 +115,7 @@ public class BlockChangeListener implements Listener {
 		try {
 			writeLock.lock();
 			ChunkEntry entry = cachedChunks.computeIfAbsent(world, k -> new Long2ObjectOpenHashMap<>()).computeIfAbsent(chunkKey, k -> new ChunkEntry());
-			entry.snapshot = chunk.getChunkSnapshot();
+			entry.snapshot = chunk.getChunkSnapshot(false, false, false);
 			entry.tiles = filterTiles(chunk.getTileEntities());
 		} finally {
 			writeLock.unlock();

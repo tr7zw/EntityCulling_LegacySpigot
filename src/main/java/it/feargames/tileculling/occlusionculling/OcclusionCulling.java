@@ -30,19 +30,26 @@ public class OcclusionCulling {
 			Vector centerZMin = VectorUtilities.cloneAndAdd(center, 0, 0, -depth / 2);
 			Vector centerZMax = VectorUtilities.cloneAndAdd(center, 0, 0, depth / 2);
 
+			//CullingPlugin.particle(player, Particle.SNOWBALL, center);
+
 			Vector[] targets = new Vector[4];
+			//CullingPlugin.particle(player, Particle.VILLAGER_HAPPY, centerYMin, centerYMax);
 			targets[0] = centerYMin.subtract(playerEyeLocation);
 			targets[1] = centerYMax.subtract(playerEyeLocation);
 
 			if (centerXMin.distanceSquared(playerEyeLocation) > centerXMax.distanceSquared(playerEyeLocation)) {
-				targets[2] = centerXMin.subtract(playerEyeLocation);
-			} else {
+				//CullingPlugin.particle(player, Particle.VILLAGER_HAPPY, centerXMax);
 				targets[2] = centerXMax.subtract(playerEyeLocation);
+			} else {
+				//CullingPlugin.particle(player, Particle.VILLAGER_HAPPY, centerXMin);
+				targets[2] = centerXMin.subtract(playerEyeLocation);
 			}
 			if (centerZMin.distanceSquared(playerEyeLocation) > centerZMax.distanceSquared(playerEyeLocation)) {
-				targets[3] = centerZMin.subtract(playerEyeLocation);
-			} else {
+				//CullingPlugin.particle(player, Particle.VILLAGER_HAPPY, centerZMax);
 				targets[3] = centerZMax.subtract(playerEyeLocation);
+			} else {
+				//CullingPlugin.particle(player, Particle.VILLAGER_HAPPY, centerZMin);
+				targets[3] = centerZMin.subtract(playerEyeLocation);
 			}
 
 			return isVisible(player, player.getWorld(), playerEyeLocation, targets);
@@ -188,7 +195,8 @@ public class OcclusionCulling {
 				}
 
 				if (snapshot == null) {
-					System.err.println("Missing chunk snapshot! " + currentChunkX + " " + currentChunkZ);
+					// Looks normal, a ray can just step into an unloaded chunk
+					//System.err.println("Missing chunk snapshot! " + currentChunkX + " " + currentChunkZ);
 					return false;
 				}
 

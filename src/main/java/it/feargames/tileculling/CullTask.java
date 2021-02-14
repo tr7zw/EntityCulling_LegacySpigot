@@ -20,25 +20,9 @@ public class CullTask implements Runnable {
 		this.plugin = plugin;
 	}
 
-	/*
-	public void blockParticles(Player player, Particle particle, Location location) {
-		int x = location.getBlockX();
-		int y = location.getBlockY();
-		int z = location.getBlockZ();
-		player.spawnParticle(particle, x, y, z, 1);
-		player.spawnParticle(particle, x + 1, y, z, 1);
-		player.spawnParticle(particle, x, y, z + 1, 1);
-		player.spawnParticle(particle, x + 1, y, z + 1, 1);
-		player.spawnParticle(particle, x, y + 1, z, 1);
-		player.spawnParticle(particle, x + 1, y + 1, z, 1);
-		player.spawnParticle(particle, x, y + 1, z + 1, 1);
-		player.spawnParticle(particle, x + 1, y + 1, z + 1, 1);
-	}
-	*/
-
 	public static final int CHUNK_RANGE = 6; // FIXME: makes no sense to have a chunk range, not this way at least
 
-	public static final int PARTICLE_INTERVAL = 40;
+	public static final int PARTICLE_INTERVAL = 20;
 	public static int particleTick = 0;
 
 	@Override
