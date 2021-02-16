@@ -9,7 +9,6 @@ import io.netty.buffer.Unpooled;
 import it.feargames.tileculling.occlusionculling.BlockChangeListener;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
-import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.server.v1_16_R3.PacketDataSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -56,7 +55,7 @@ public class CullingPlugin extends JavaPlugin {
 					Player player = event.getPlayer();
 					PacketContainer packet = event.getPacket();
 
-					if (!player.getName().equals("sgdc3")) {
+					if (!player.getName().equals("sgdc3") && !player.getName().equals("tr7zw")) {
 						return;
 					}
 
@@ -69,12 +68,7 @@ public class CullingPlugin extends JavaPlugin {
 						return;
 					}
 
-					//boolean full = packet.getBooleans().read(0);
-					int bitMask = packet.getIntegers().read(2); // 65535 when chunk is marked as full?
-					//NbtCompound heightmaps = (NbtCompound) packet.getNbtModifier().read(0);
-					//if (full) {
-					//	int[] biomes = packet.getIntegerArrays().read(0);
-					//}
+					int bitMask = packet.getIntegers().read(2);
 					byte[] chunkData = packet.getByteArrays().read(0);
 
 					IntSet removedBlocks = null;
@@ -85,6 +79,8 @@ public class CullingPlugin extends JavaPlugin {
 						if (!type.equals(Material.CHEST.getKey().toString())) {
 							continue;
 						}
+
+						iterator.remove();
 						if (removedBlocks == null) {
 							removedBlocks = new IntOpenHashSet();
 						}
@@ -96,6 +92,7 @@ public class CullingPlugin extends JavaPlugin {
 						byte z = (byte) (compound.getInteger("z") & 0xF);
 
 						int key = section + (x << 8) + (y << 16) + (z << 24);
+						removedBlocks.add(key);
 
 						getLogger().info(section + ": " + x + "," + y + "," + z + " => " + key);
 					}
@@ -106,63 +103,106 @@ public class CullingPlugin extends JavaPlugin {
 					getLogger().warning(chunkX + "," + chunkZ + ": Changes detected.");
 					packet.getListNbtModifier().write(0, tileEntities);
 
-					PacketDataSerializer serializer = new PacketDataSerializer(Unpooled.wrappedBuffer(chunkData));
+					PacketDataSerializer reader = new PacketDataSerializer(Unpooled.wrappedBuffer(chunkData));
+					PacketDataSerializer writer = new PacketDataSerializer(Unpooled.buffer());
 					for (int sectionY = 0; sectionY < 16; sectionY++) {
 						if ((bitMask & (1 << sectionY)) == 0) {
 							continue;
 						}
 
-						short nonAirBlockCount = serializer.readShort();
-						byte bitsPerBlock = serializer.readByte();
-						if (bitsPerBlock < 4) {
-							//bitsPerBlock = 4;
+						short nonAirBlockCount = reader.readShort();
+						writer.writeShort(nonAirBlockCount);
+
+						byte bitsPerBlock = reader.readByte();
+						if (bitsPerBlock < 4 || bitsPerBlock > 64) {
 							throw new RuntimeException("Invalid bits per block! (" + bitsPerBlock + ")");
 						}
 						boolean direct = bitsPerBlock > 8;
-						int indirectAirId = -1;
+						writer.writeByte(bitsPerBlock);
 
-						if (!direct) {
-							getLogger().info("Indirect!");
-							int palletLength = serializer.readVarInt();
+						int palletteAirIndex;
+						if (direct) {
+							palletteAirIndex = 0; // Global index
+						} else {
+							palletteAirIndex = -1;
+
+							int palletLength = reader.readVarInt();
+							int[] pallette = new int[palletLength];
+
 							for (int i = 0; i < palletLength; i++) {
-								int globalId = serializer.readVarInt();
-								//getLogger().info(i + " => " + globalId);
+								int globalId = reader.readVarInt();
+								pallette[i] = globalId;
+
 								if (globalId == 0) {
-									indirectAirId = i;
-									break;
+									palletteAirIndex = i;
 								}
 							}
-							if (indirectAirId == -1) {
-								getLogger().severe("Missing air in pallette!");
-								continue;
+
+							if (palletteAirIndex == -1) {
+								// Expand
+								int[] newPallette = new int[palletLength + 1];
+								System.arraycopy(pallette, 0, newPallette, 0, palletLength);
+								pallette = newPallette;
+								palletLength++;
+								// Add mapping to pallet
+								pallette[palletLength - 1] = 0;
+								palletteAirIndex = palletLength - 1;
+							}
+
+							writer.d(palletLength);
+							for (int i = 0; i < palletLength; i++) {
+								writer.d(pallette[i]);
 							}
 						}
 
-						int dataArrayLength = serializer.readVarInt();
+						int dataArrayLength = reader.readVarInt();
+						writer.b(dataArrayLength);
+
 						long[] dataArray = new long[dataArrayLength];
 						for (int i = 0; i < dataArrayLength; i++) {
-							dataArray[i] = serializer.readLong();
+							dataArray[i] = reader.readLong();
 						}
 
 						int individualValueMask = ((1 << bitsPerBlock) - 1);
 						byte blocksPerLong = (byte) (64 / bitsPerBlock);
 
-						//StringBuffer buffer = new StringBuffer();
 						for (byte y = 0; y < 16; y++) {
 							for (byte z = 0; z < 16; z++) {
 								for (byte x = 0; x < 16; x++) {
+									int key = sectionY + (x << 8) + (y << 16) + (z << 24);
+									if (!removedBlocks.contains(key)) {
+										continue;
+									}
+
 									short blockNumber = (short) ((((y * 16) + z) * 16) + x);
 									short longIndex = (short) (blockNumber / blocksPerLong);
 									byte startOffset = (byte) (blockNumber % blocksPerLong);
 
+									if (longIndex >= dataArrayLength) {
+										getLogger().severe("Tried to access section data at index " + longIndex + " but length was " + dataArrayLength);
+										continue;
+									}
+
 									int data = (int) (dataArray[longIndex] >> startOffset);
 									data &= individualValueMask;
-									//buffer.append(x).append(',').append(y).append(',').append(z).append(':').append(data).append(';');
+
+									// TODO: replace data
 								}
 							}
 						}
-						//getLogger().warning(buffer.toString());
+
+						for (int i = 0; i < dataArrayLength; i++) {
+							writer.writeLong(dataArray[i]);
+						}
+
+						// Copy light data
+						writer.writeBytes(reader);
 					}
+
+					// Replace data
+					chunkData = writer.array();
+					packet.getByteArrays().write(0, chunkData);
+
 					getLogger().warning(chunkX + "," + chunkZ + ": Processed.");
 				} catch (Throwable t) {
 					getLogger().log(Level.SEVERE, "WTF", t);
