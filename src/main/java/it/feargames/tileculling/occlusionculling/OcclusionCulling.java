@@ -1,8 +1,8 @@
 package it.feargames.tileculling.occlusionculling;
 
+import it.feargames.tileculling.ChunkCache;
 import it.feargames.tileculling.CullingPlugin;
-import it.feargames.tileculling.VectorUtilities;
-import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
+import it.feargames.tileculling.util.VectorUtilities;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -10,7 +10,13 @@ import org.bukkit.util.Vector;
 
 public class OcclusionCulling {
 
-	private final Long2ByteOpenHashMap cache = new Long2ByteOpenHashMap();
+	private final ChunkCache chunkCache;
+
+	//private final Long2ByteOpenHashMap cache = new Long2ByteOpenHashMap();
+
+	public OcclusionCulling(ChunkCache chunkCache) {
+		this.chunkCache = chunkCache;
+	}
 
 	public boolean isAABBVisible(Player player, Vector playerEyeLocation, Location aabbBlock, AxisAlignedBB aabb) {
 		try {
@@ -61,7 +67,7 @@ public class OcclusionCulling {
 	}
 
 	public void resetCache() {
-		cache.clear();
+		//cache.clear();
 	}
 
 	/**
@@ -177,7 +183,7 @@ public class OcclusionCulling {
 		// iterate through all intersecting cells (n times)
 		for (; n > 0; n--) {
 			long key = Block.getBlockKey(x, y, z);
-			byte cVal = cache.get(key); // Default is 0
+			byte cVal = 0;//FIXME cache.get(key); // Default is 0
 
 			if (cVal == 2) {
 				return false;
@@ -191,23 +197,16 @@ public class OcclusionCulling {
 					chunkX = currentChunkX;
 					chunkZ = currentChunkZ;
 					long chunkKey = Chunk.getChunkKey(chunkX, chunkZ);
-					snapshot = CullingPlugin.instance.blockChangeListener.getChunk(world, chunkKey);
+					snapshot = chunkCache.getChunk(world, chunkKey);
 				}
 
 				if (snapshot == null) {
 					// Looks normal, a ray can just step into an unloaded chunk
-					//System.err.println("Missing chunk snapshot! " + currentChunkX + " " + currentChunkZ);
 					return false;
 				}
 
-				/*
-				if (false && player.getName().equals("sgdc3") && CullTask.particleTick > CullTask.PARTICLE_INTERVAL) {
-					player.spawnParticle(Particle.VILLAGER_HAPPY, x, y, z, 1);
-				}
-				*/
-
 				if (y < 0 || y > 255) {
-					System.err.println("Invalid Y " + y);
+					System.err.println("Invalid Y " + y); // TODO: remove System.err usage
 					return false; // Should never happen
 				}
 
@@ -215,16 +214,10 @@ public class OcclusionCulling {
 				int relativeZ = z & 0xF;
 				Material material = snapshot.getBlockType(relativeX, y, relativeZ);
 				if (CullingPlugin.isOccluding(material)) {
-					cache.put(key, (byte) 2);
-					/*
-					if (player.getName().equals("sgdc3") && CullTask.particleTick > CullTask.PARTICLE_INTERVAL) {
-						System.err.println(material.name() + " " + x + " " + z + " | " + relativeX + " " + relativeZ);
-						player.spawnParticle(Particle.BARRIER, x + 0.5, y + 0.5, z + 0.5, 1);
-					}
-					*/
+					// FIXME cache.put(key, (byte) 2);
 					return false;
 				}
-				cache.put(key, (byte) 1);
+				// FIXME cache.put(key, (byte) 1);
 			}
 
 			if (t_next_y < t_next_x && t_next_y < t_next_z) { // next cell is upwards/downwards because the distance to the next vertical
