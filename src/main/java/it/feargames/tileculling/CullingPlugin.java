@@ -9,6 +9,8 @@ import org.bukkit.block.*;
 import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.plugin.java.JavaPlugin;
 
+// FIXME: fill player chunk tracker with chunks near player if the plugin is reloaded
+
 public class CullingPlugin extends JavaPlugin {
 
 	private IAdapter adapter;
