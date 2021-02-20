@@ -48,7 +48,7 @@ public class VisibilityCache implements Listener {
 			readLock.lock();
 			LongSet blocks = hiddenBlocks.get(player);
 			if (blocks == null) {
-				return false;
+				return true; // We remove tiles in chunks sent to the client
 			}
 			return blocks.contains(blockKey);
 		} finally {

@@ -6,7 +6,6 @@ import com.comphenix.protocol.wrappers.nbt.NbtBase;
 import com.comphenix.protocol.wrappers.nbt.NbtCompound;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import it.feargames.tileculling.ChunkSeeder;
 import it.feargames.tileculling.CullingPlugin;
 import it.feargames.tileculling.PlayerChunkTracker;
 import it.feargames.tileculling.adapter.IAdapter;
@@ -15,7 +14,7 @@ import it.unimi.dsi.fastutil.ints.IntSet;
 import org.bukkit.Chunk;
 import org.bukkit.entity.Player;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -23,14 +22,12 @@ public class MapChunkPacketListener extends PacketAdapter {
 
 	private final IAdapter adapter;
 	private final PlayerChunkTracker playerChunkTracker;
-	private final ChunkSeeder chunkSeeder;
 
-	public MapChunkPacketListener(CullingPlugin plugin, IAdapter adapter, PlayerChunkTracker playerChunkTracker, ChunkSeeder chunkSeeder) {
-		super(plugin, ListenerPriority.HIGHEST, Collections.singletonList(PacketType.Play.Server.MAP_CHUNK), ListenerOptions.ASYNC);
+	public MapChunkPacketListener(CullingPlugin plugin, IAdapter adapter, PlayerChunkTracker playerChunkTracker) {
+		super(plugin, ListenerPriority.HIGHEST, Arrays.asList(PacketType.Play.Server.MAP_CHUNK, PacketType.Play.Server.UNLOAD_CHUNK), ListenerOptions.ASYNC);
 		this.plugin = plugin;
 		this.adapter = adapter;
 		this.playerChunkTracker = playerChunkTracker;
-		this.chunkSeeder = chunkSeeder;
 	}
 
 	@Override
@@ -41,14 +38,12 @@ public class MapChunkPacketListener extends PacketAdapter {
 		int chunkX = packet.getIntegers().read(0);
 		int chunkZ = packet.getIntegers().read(1);
 		long chunkKey = Chunk.getChunkKey(chunkX, chunkZ);
-
-		if (!transformPacket(packet)) {
-			// No tiles in the chunk, no need to seed it
+		if (packet.getType() == PacketType.Play.Server.MAP_CHUNK) {
+			transformPacket(packet);
 			playerChunkTracker.trackChunk(player, chunkKey);
-			return;
+		} else if (packet.getType() == PacketType.Play.Server.UNLOAD_CHUNK) {
+			playerChunkTracker.untrackChunk(player, chunkKey);
 		}
-
-		chunkSeeder.seedChunk(player, chunkKey);
 	}
 
 	public boolean transformPacket(PacketContainer packet) {

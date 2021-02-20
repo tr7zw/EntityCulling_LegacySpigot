@@ -9,8 +9,6 @@ import org.bukkit.block.*;
 import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.plugin.java.JavaPlugin;
 
-// FIXME: fill player chunk tracker with chunks near player if the plugin is reloaded
-
 public class CullingPlugin extends JavaPlugin {
 
 	private IAdapter adapter;
@@ -20,24 +18,22 @@ public class CullingPlugin extends JavaPlugin {
 	private ChunkCache chunkCache;
 	private VisibilityCache visibilityCache;
 	private MapChunkPacketListener mapChunkPacketListener;
-	private ChunkSeeder chunkSeeder;
 
 	private VisibilityUpdateThread visibilityUpdateThread;
 
 	@Override
 	public void onEnable() {
 		adapter = new Adapter_1_16_R3();
-		playerChunkTracker = new PlayerChunkTracker();
+		playerChunkTracker = new PlayerChunkTracker(this);
 		visibilityCache = new VisibilityCache();
 		chunkCache = new ChunkCache(this);
 		chunkTileVisibilityManager = new ChunkTileVisibilityManager(adapter, playerChunkTracker, visibilityCache, chunkCache);
-		chunkSeeder = new ChunkSeeder(playerChunkTracker, chunkTileVisibilityManager);
 
 		getServer().getPluginManager().registerEvents(playerChunkTracker, this);
 		getServer().getPluginManager().registerEvents(chunkCache, this);
 		getServer().getPluginManager().registerEvents(visibilityCache, this);
 
-		mapChunkPacketListener = new MapChunkPacketListener(this, adapter, playerChunkTracker, chunkSeeder);
+		mapChunkPacketListener = new MapChunkPacketListener(this, adapter, playerChunkTracker);
 		ProtocolLibrary.getProtocolManager().addPacketListener(mapChunkPacketListener);
 
 		visibilityUpdateThread = new VisibilityUpdateThread(chunkTileVisibilityManager);
@@ -52,11 +48,6 @@ public class CullingPlugin extends JavaPlugin {
 		// Stop update task
 		if (visibilityUpdateThread != null) {
 			visibilityUpdateThread.shutdown();
-		}
-
-		// Stop seeder
-		if (chunkSeeder != null) {
-			chunkSeeder.shutdown();
 		}
 	}
 

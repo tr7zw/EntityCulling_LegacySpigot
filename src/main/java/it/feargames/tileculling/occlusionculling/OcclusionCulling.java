@@ -3,6 +3,7 @@ package it.feargames.tileculling.occlusionculling;
 import it.feargames.tileculling.ChunkCache;
 import it.feargames.tileculling.CullingPlugin;
 import it.feargames.tileculling.util.VectorUtilities;
+import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -12,7 +13,7 @@ public class OcclusionCulling {
 
 	private final ChunkCache chunkCache;
 
-	//private final Long2ByteOpenHashMap cache = new Long2ByteOpenHashMap();
+	private final Long2ByteOpenHashMap cache = new Long2ByteOpenHashMap();
 
 	public OcclusionCulling(ChunkCache chunkCache) {
 		this.chunkCache = chunkCache;
@@ -183,7 +184,7 @@ public class OcclusionCulling {
 		// iterate through all intersecting cells (n times)
 		for (; n > 0; n--) {
 			long key = Block.getBlockKey(x, y, z);
-			byte cVal = 0;//FIXME cache.get(key); // Default is 0
+			byte cVal = cache.get(key); // Default is 0
 
 			if (cVal == 2) {
 				return false;
@@ -214,10 +215,10 @@ public class OcclusionCulling {
 				int relativeZ = z & 0xF;
 				Material material = snapshot.getBlockType(relativeX, y, relativeZ);
 				if (CullingPlugin.isOccluding(material)) {
-					// FIXME cache.put(key, (byte) 2);
+					cache.put(key, (byte) 2);
 					return false;
 				}
-				// FIXME cache.put(key, (byte) 1);
+				cache.put(key, (byte) 1);
 			}
 
 			if (t_next_y < t_next_x && t_next_y < t_next_z) { // next cell is upwards/downwards because the distance to the next vertical

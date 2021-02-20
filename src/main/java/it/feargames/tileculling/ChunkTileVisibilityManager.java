@@ -74,26 +74,4 @@ public class ChunkTileVisibilityManager {
 			}
 		}
 	}
-
-	public void seedChunk(Player player, long chunkKey) {
-		World world = player.getWorld();
-		Vector playerEyeLocation = player.getEyeLocation().toVector();
-
-		List<BlockState> tiles = chunkCache.getChunkTiles(world, chunkKey);
-		if (tiles == null) {
-			// Should never happen, just in case
-			return;
-		}
-
-		for (BlockState block : tiles) {
-			Location bloc = block.getLocation();
-			boolean canSee = culling.isAABBVisible(player, playerEyeLocation, bloc, BLOCK_AABB);
-			if (canSee) {
-				visibilityCache.setHidden(player, block.getLocation(), false);
-				player.sendBlockChange(block.getLocation(), block.getBlockData());
-			} else {
-				visibilityCache.setHidden(player, block.getLocation(), true);
-			}
-		}
-	}
 }
