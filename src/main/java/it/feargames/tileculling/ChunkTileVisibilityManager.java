@@ -3,11 +3,10 @@ package it.feargames.tileculling;
 import it.feargames.tileculling.adapter.IAdapter;
 import it.feargames.tileculling.occlusionculling.AxisAlignedBB;
 import it.feargames.tileculling.occlusionculling.OcclusionCulling;
-import org.bukkit.Chunk;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.TileState;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
@@ -24,13 +23,13 @@ public class ChunkTileVisibilityManager {
 
 	private final OcclusionCulling culling;
 
-	public ChunkTileVisibilityManager(IAdapter adapter, PlayerChunkTracker playerTracker, VisibilityCache visibilityCache, ChunkCache chunkCache) {
+	public ChunkTileVisibilityManager(SettingsHolder settings, IAdapter adapter, PlayerChunkTracker playerTracker, VisibilityCache visibilityCache, ChunkCache chunkCache) {
 		this.adapter = adapter;
 		this.playerTracker = playerTracker;
 		this.visibilityCache = visibilityCache;
 		this.chunkCache = chunkCache;
 
-		this.culling = new OcclusionCulling(chunkCache);
+		this.culling = new OcclusionCulling(chunkCache, settings.getTileRange());
 	}
 
 	public void updateVisibility(Player player) {
@@ -55,10 +54,13 @@ public class ChunkTileVisibilityManager {
 				if (hidden && canSee) {
 					visibilityCache.setHidden(player, bloc, false);
 					adapter.updateBlockState(player, bloc, block.getBlockData());
-					adapter.updateBlockData(player, bloc, block);
+					if (block instanceof TileState) {
+						adapter.updateBlockData(player, bloc, block);
+
+					}
 				} else if (!hidden && !canSee) {
 					visibilityCache.setHidden(player, bloc, true);
-					adapter.updateBlockState(player, bloc, Material.AIR, (byte) 0);
+					adapter.updateBlockState(player, bloc, null);
 				}
 			}
 		}

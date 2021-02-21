@@ -7,24 +7,27 @@ import com.comphenix.protocol.wrappers.nbt.NbtCompound;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import it.feargames.tileculling.CullingPlugin;
+import it.feargames.tileculling.HiddenTileRegistry;
 import it.feargames.tileculling.PlayerChunkTracker;
 import it.feargames.tileculling.adapter.IAdapter;
+import it.feargames.tileculling.util.LocationUtilities;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
-import org.bukkit.Chunk;
 import org.bukkit.entity.Player;
 
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-public class MapChunkPacketListener extends PacketAdapter {
+public class ChunkPacketListener extends PacketAdapter {
 
+	private final HiddenTileRegistry hiddenTileRegistry;
 	private final IAdapter adapter;
 	private final PlayerChunkTracker playerChunkTracker;
 
-	public MapChunkPacketListener(CullingPlugin plugin, IAdapter adapter, PlayerChunkTracker playerChunkTracker) {
+	public ChunkPacketListener(CullingPlugin plugin, HiddenTileRegistry hiddenTileRegistry, IAdapter adapter, PlayerChunkTracker playerChunkTracker) {
 		super(plugin, ListenerPriority.HIGHEST, Arrays.asList(PacketType.Play.Server.MAP_CHUNK, PacketType.Play.Server.UNLOAD_CHUNK), ListenerOptions.ASYNC);
+		this.hiddenTileRegistry = hiddenTileRegistry;
 		this.plugin = plugin;
 		this.adapter = adapter;
 		this.playerChunkTracker = playerChunkTracker;
@@ -37,7 +40,7 @@ public class MapChunkPacketListener extends PacketAdapter {
 
 		int chunkX = packet.getIntegers().read(0);
 		int chunkZ = packet.getIntegers().read(1);
-		long chunkKey = Chunk.getChunkKey(chunkX, chunkZ);
+		long chunkKey = LocationUtilities.getChunkKey(chunkX, chunkZ);
 		if (packet.getType() == PacketType.Play.Server.MAP_CHUNK) {
 			transformPacket(packet);
 			playerChunkTracker.trackChunk(player, chunkKey);
@@ -46,14 +49,14 @@ public class MapChunkPacketListener extends PacketAdapter {
 		}
 	}
 
-	public boolean transformPacket(PacketContainer packet) {
+	public void transformPacket(PacketContainer packet) {
 		//long start = System.nanoTime();
 		//int chunkX = packet.getIntegers().read(0);
 		//int chunkZ = packet.getIntegers().read(1);
 
 		List<NbtBase<?>> tileEntities = packet.getListNbtModifier().read(0);
 		if (tileEntities.isEmpty()) {
-			return false;
+			return;
 		}
 
 		int bitMask = packet.getIntegers().read(2);
@@ -65,7 +68,7 @@ public class MapChunkPacketListener extends PacketAdapter {
 			NbtCompound compound = (NbtCompound) tileEntity;
 
 			String type = compound.getString("id");
-			if (!CullingPlugin.shouldHide(type)) {
+			if (!hiddenTileRegistry.shouldHide(type)) {
 				continue;
 			}
 
@@ -88,7 +91,7 @@ public class MapChunkPacketListener extends PacketAdapter {
 		}
 		if (removedBlocks == null) {
 			//plugin.getLogger().warning(chunkX + "," + chunkZ + ": No removed blocks. Took " + (System.nanoTime() - start));
-			return false;
+			return;
 		}
 
 		packet.getListNbtModifier().write(0, tileEntities);
@@ -183,6 +186,5 @@ public class MapChunkPacketListener extends PacketAdapter {
 		packet.getByteArrays().write(0, chunkData);
 
 		//plugin.getLogger().warning(chunkX + "," + chunkZ + ": Processed. Took " + (System.nanoTime() - start));
-		return true;
 	}
 }

@@ -1,9 +1,9 @@
 package it.feargames.tileculling;
 
+import it.feargames.tileculling.util.LocationUtilities;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import org.bukkit.Location;
-import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -40,7 +40,7 @@ public class VisibilityCache implements Listener {
 	}
 
 	public void setHidden(Player player, Location blockLocation, boolean hidden) {
-		setHidden(player, blockLocation.toBlockKey(), hidden);
+		setHidden(player, LocationUtilities.getBlockKey(blockLocation), hidden);
 	}
 
 	public boolean isHidden(Player player, long blockKey) {
@@ -57,7 +57,7 @@ public class VisibilityCache implements Listener {
 	}
 
 	public boolean isHidden(Player player, Location blockLocation) {
-		return isHidden(player, blockLocation.toBlockKey());
+		return isHidden(player, LocationUtilities.getBlockKey(blockLocation));
 	}
 
 	@EventHandler
@@ -76,11 +76,11 @@ public class VisibilityCache implements Listener {
 			writeLock.lock();
 			for (LongSet blocks : hiddenBlocks.values()) {
 				blocks.removeIf((LongPredicate) block -> {
-					int chunkX = Block.getBlockKeyX(block) >> 4;
+					int chunkX = LocationUtilities.getBlockKeyX(block) >> 4;
 					if (event.getChunk().getX() != chunkX) {
 						return false;
 					}
-					int chunkZ = Block.getBlockKeyZ(block) >> 4;
+					int chunkZ = LocationUtilities.getBlockKeyZ(block) >> 4;
 					return event.getChunk().getZ() == chunkZ;
 				});
 			}

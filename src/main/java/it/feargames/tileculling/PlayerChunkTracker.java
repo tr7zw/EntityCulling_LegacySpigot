@@ -1,5 +1,7 @@
 package it.feargames.tileculling;
 
+import it.feargames.tileculling.util.LocationUtilities;
+import it.feargames.tileculling.util.PaperUtilities;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import org.bukkit.Chunk;
@@ -27,16 +29,18 @@ public class PlayerChunkTracker implements Listener {
 
 		// Track chunks around online players
 		for (Player player : plugin.getServer().getOnlinePlayers()) {
-			Chunk playerChunk = player.getChunk();
+			int playerChunkX = player.getLocation().getBlockX() >> 4;
+			int playerChunkZ = player.getLocation().getBlockZ() >> 4;
 			World world = player.getWorld();
-			int viewDistanceSquared = world.getViewDistance() * world.getViewDistance(); // TODO: use notickviewdistance on paper?
+			int viewDistance = PaperUtilities.getViewDistance(world);
+			int viewDistanceSquared = viewDistance * viewDistance;
 			for (Chunk chunk : world.getLoadedChunks()) {
-				double distanceSquared = Math.pow(chunk.getX() - playerChunk.getX(), 2) + Math.pow(chunk.getZ() - playerChunk.getZ(), 2);
+				double distanceSquared = Math.pow(chunk.getX() - playerChunkX, 2) + Math.pow(chunk.getZ() - playerChunkZ, 2);
 				distanceSquared = Math.abs(distanceSquared);
 				if (distanceSquared > viewDistanceSquared) {
 					continue;
 				}
-				trackChunk(player, chunk.getChunkKey());
+				trackChunk(player, LocationUtilities.getChunkKey(chunk));
 			}
 		}
 	}
@@ -82,21 +86,6 @@ public class PlayerChunkTracker implements Listener {
 			writeLock.unlock();
 		}
 	}
-
-	/*
-	public boolean isChunkTracked(Player player, long chunkKey) {
-		try {
-			readLock.lock();
-			LongSet trackedChunks = trackedPlayers.get(player);
-			if (trackedChunks == null) {
-				return false;
-			}
-			return trackedChunks.contains(chunkKey);
-		} finally {
-			readLock.unlock();
-		}
-	}
-	*/
 
 	public long[] getTrackedChunks(Player player) {
 		try {

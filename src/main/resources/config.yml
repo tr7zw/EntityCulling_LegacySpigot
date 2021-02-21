@@ -1,0 +1,33 @@
+settings:
+  tileRange: 64
+hiddenTiles:
+  materials:
+    # Inventory holders
+    - CHEST
+    - TRAPPED_CHEST
+    - FURNACE
+    - DISPENSER
+    - DROPPER
+    - HOPPER
+    - BREWING_STAND
+    - BARREL
+    # Misc
+    - SPAWNER
+    - ENCHANTING_TABLE
+    - ENDER_CHEST
+    # Skulls
+    - SKELETON_SKULL
+    - SKELETON_WALL_SKULL
+    - WITHER_SKELETON_SKULL
+    - WITHER_SKELETON_WALL_SKULL
+    - ZOMBIE_HEAD
+    - ZOMBIE_WALL_HEAD
+    - CREEPER_HEAD
+    - CREEPER_WALL_HEAD
+    - DRAGON_HEAD
+    - DRAGON_WALL_HEAD
+    - PLAYER_HEAD
+    - PLAYER_WALL_HEAD
+  tags:
+    - SHULKER_BOXES
+    - SIGNS

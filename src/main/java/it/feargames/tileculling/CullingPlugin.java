@@ -1,45 +1,48 @@
 package it.feargames.tileculling;
 
 import com.comphenix.protocol.ProtocolLibrary;
-import com.destroystokyo.paper.MaterialTags;
 import it.feargames.tileculling.adapter.Adapter_1_16_R3;
 import it.feargames.tileculling.adapter.IAdapter;
-import it.feargames.tileculling.protocol.MapChunkPacketListener;
+import it.feargames.tileculling.protocol.ChunkPacketListener;
 import org.bukkit.Material;
-import org.bukkit.block.BlockState;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 public class CullingPlugin extends JavaPlugin {
 
-	private IAdapter adapter;
+	private SettingsHolder settings;
+	private HiddenTileRegistry hiddenTileRegistry;
 
+	private IAdapter adapter;
 	private ChunkTileVisibilityManager chunkTileVisibilityManager;
 	private PlayerChunkTracker playerChunkTracker;
 	private ChunkCache chunkCache;
 	private VisibilityCache visibilityCache;
-	private MapChunkPacketListener mapChunkPacketListener;
+	private ChunkPacketListener chunkPacketListener;
 
 	private VisibilityUpdateThread visibilityUpdateThread;
 
 	@Override
 	public void onEnable() {
+		saveDefaultConfig();
+
+		settings = new SettingsHolder();
+		settings.load(getConfig().getConfigurationSection("settings"));
+		hiddenTileRegistry = new HiddenTileRegistry(getLogger());
+		hiddenTileRegistry.load(getConfig().getConfigurationSection("hiddenTiles"));
+
 		adapter = new Adapter_1_16_R3();
 		playerChunkTracker = new PlayerChunkTracker(this);
 		visibilityCache = new VisibilityCache();
-		chunkCache = new ChunkCache(this);
-		chunkTileVisibilityManager = new ChunkTileVisibilityManager(adapter, playerChunkTracker, visibilityCache, chunkCache);
+		chunkCache = new ChunkCache(this, hiddenTileRegistry);
+		chunkTileVisibilityManager = new ChunkTileVisibilityManager(settings, adapter, playerChunkTracker, visibilityCache, chunkCache);
 
 		getServer().getPluginManager().registerEvents(playerChunkTracker, this);
 		getServer().getPluginManager().registerEvents(chunkCache, this);
 		getServer().getPluginManager().registerEvents(visibilityCache, this);
 
-		mapChunkPacketListener = new MapChunkPacketListener(this, adapter, playerChunkTracker);
-		ProtocolLibrary.getProtocolManager().addPacketListener(mapChunkPacketListener);
+		chunkPacketListener = new ChunkPacketListener(this, hiddenTileRegistry, adapter, playerChunkTracker);
+		ProtocolLibrary.getProtocolManager().addPacketListener(chunkPacketListener);
 
 		visibilityUpdateThread = new VisibilityUpdateThread(chunkTileVisibilityManager);
 		visibilityUpdateThread.start();
@@ -63,63 +66,13 @@ public class CullingPlugin extends JavaPlugin {
 		}
 	}
 
-	// TODO: create a registry
-
-	private static final Material[] hiddenMaterials;
-	private static final String[] hiddenNamespaces;
-
-	static {
-		List<Material> materials = new ArrayList<>(Arrays.asList(
-				Material.CHEST,
-				Material.TRAPPED_CHEST,
-				Material.ENDER_CHEST,
-				Material.FURNACE,
-				Material.DISPENSER,
-				Material.DROPPER,
-				Material.HOPPER,
-				Material.BREWING_STAND,
-				Material.BARREL,
-				Material.SPAWNER,
-				Material.ENCHANTING_TABLE
-
-		));
-		materials.addAll(MaterialTags.SHULKER_BOXES.getValues());
-		materials.addAll(MaterialTags.SKULLS.getValues());
-		materials.addAll(MaterialTags.SIGNS.getValues());
-		// Cache values
-		hiddenMaterials = materials.toArray(new Material[0]);
-		hiddenNamespaces = materials.stream().map(material -> material.getKey().toString()).toArray(String[]::new);
-	}
-
-	public static boolean shouldHide(String namespacedKey) {
-		for (String current : hiddenNamespaces) {
-			if (current.equals(namespacedKey)) {
-				return true;
-			}
-		}
-		return true;
-	}
-
-	public static boolean shouldHide(Material material) {
-		for (Material current : hiddenMaterials) {
-			if (current == material) {
-				return true;
-			}
-		}
-		return true;
-	}
-
-	public static boolean shouldHide(BlockState state) {
-		return shouldHide(state.getType());
-	}
-
+	// TODO: registry
 	public static boolean isOccluding(Material material) {
 		switch (material) {
 			case BARRIER:
 			case SPAWNER:
 				return false;
 		}
-		// TODO: are we sure we want to use this?
 		return material.isOccluding();
 	}
 }

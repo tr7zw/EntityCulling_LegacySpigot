@@ -1,5 +1,6 @@
 package it.feargames.tileculling;
 
+import it.feargames.tileculling.util.LocationUtilities;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import org.bukkit.Chunk;
@@ -26,17 +27,19 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class ChunkCache implements Listener {
 
 	private final CullingPlugin plugin;
+	private final HiddenTileRegistry hiddenTileRegistry;
 
 	private final Map<World, Long2ObjectMap<ChunkEntry>> cachedChunks = new HashMap<>();
 	private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 	private final ReentrantReadWriteLock.WriteLock writeLock = lock.writeLock();
 	private final ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
 
-	public ChunkCache(CullingPlugin plugin) {
+	public ChunkCache(CullingPlugin plugin, HiddenTileRegistry hiddenTileRegistry) {
 		this.plugin = plugin;
+		this.hiddenTileRegistry = hiddenTileRegistry;
 		for (World world : plugin.getServer().getWorlds()) {
 			for (Chunk chunk : world.getLoadedChunks()) {
-				updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk);
+				updateCachedChunkSync(chunk.getWorld(), LocationUtilities.getChunkKey(chunk), chunk);
 			}
 		}
 	}
@@ -58,7 +61,7 @@ public class ChunkCache implements Listener {
 		new BukkitRunnable() {
 			@Override
 			public void run() {
-				updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk);
+				updateCachedChunkSync(chunk.getWorld(), LocationUtilities.getChunkKey(chunk), chunk);
 			}
 		}.runTask(plugin);
 	}
@@ -70,7 +73,7 @@ public class ChunkCache implements Listener {
 		new BukkitRunnable() {
 			@Override
 			public void run() {
-				updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk);
+				updateCachedChunkSync(chunk.getWorld(), LocationUtilities.getChunkKey(chunk), chunk);
 			}
 		}.runTask(plugin);
 	}
@@ -82,7 +85,7 @@ public class ChunkCache implements Listener {
 		new BukkitRunnable() {
 			@Override
 			public void run() {
-				updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk);
+				updateCachedChunkSync(chunk.getWorld(), LocationUtilities.getChunkKey(chunk), chunk);
 			}
 		}.runTask(plugin);
 	}
@@ -90,13 +93,13 @@ public class ChunkCache implements Listener {
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onChunkLoad(ChunkLoadEvent e) {
 		Chunk chunk = e.getChunk();
-		updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk);
+		updateCachedChunkSync(chunk.getWorld(), LocationUtilities.getChunkKey(chunk), chunk);
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onChunkUnload(ChunkUnloadEvent e) {
 		Chunk chunk = e.getChunk();
-		updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), null);
+		updateCachedChunkSync(chunk.getWorld(), LocationUtilities.getChunkKey(chunk), null);
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -115,7 +118,7 @@ public class ChunkCache implements Listener {
 			chunks.add(block.getChunk());
 		}
 		for (Chunk chunk : chunks) {
-			updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk);
+			updateCachedChunkSync(chunk.getWorld(), LocationUtilities.getChunkKey(chunk), chunk);
 		}
 	}
 
@@ -153,24 +156,11 @@ public class ChunkCache implements Listener {
 
 		List<BlockState> result = new LinkedList<>();
 		for (BlockState state : tiles) {
-			if (CullingPlugin.shouldHide(state)) {
+			if (hiddenTileRegistry.shouldHide(state)) {
 				result.add(state);
 			}
 		}
 		return result;
-	}
-
-	public boolean isInLoadedChunk(World world, long chunkKey) {
-		try {
-			readLock.lock();
-			Long2ObjectMap<ChunkEntry> entries = cachedChunks.get(world);
-			return entries != null && entries.containsKey(chunkKey);
-		} catch (Throwable t) {
-			t.printStackTrace();
-		} finally {
-			readLock.unlock();
-		}
-		return false;
 	}
 
 	public ChunkSnapshot getChunk(World world, long chunkKey) {

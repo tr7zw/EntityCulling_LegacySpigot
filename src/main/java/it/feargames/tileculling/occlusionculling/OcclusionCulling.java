@@ -2,6 +2,7 @@ package it.feargames.tileculling.occlusionculling;
 
 import it.feargames.tileculling.ChunkCache;
 import it.feargames.tileculling.CullingPlugin;
+import it.feargames.tileculling.util.LocationUtilities;
 import it.feargames.tileculling.util.VectorUtilities;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
@@ -12,12 +13,15 @@ import java.util.Arrays;
 public class OcclusionCulling {
 
 	private final ChunkCache chunkCache;
+	private final int tileRange;
 
-	private static final int REACH = 64; // TODO: config
-	private final byte[] cache = new byte[((REACH * 2) * (REACH * 2) * (REACH * 2)) / 4];
+	private final byte[] cache;
 
-	public OcclusionCulling(ChunkCache chunkCache) {
+	public OcclusionCulling(ChunkCache chunkCache, int tileRange) {
 		this.chunkCache = chunkCache;
+		this.tileRange = tileRange;
+
+		cache = new byte[((tileRange * 2) * (tileRange * 2) * (tileRange * 2)) / 4];
 	}
 
 	public boolean isAABBVisible(Player player, Vector playerEyeLocation, Location aabbBlock, AxisAlignedBB aabb) {
@@ -28,7 +32,7 @@ public class OcclusionCulling {
 
 			Vector center = aabb.getAABBMiddle(aabbBlock);
 
-			if (center.distanceSquared(playerEyeLocation) > (REACH * REACH)) {
+			if (center.distanceSquared(playerEyeLocation) > (tileRange * tileRange)) {
 				return false; // Out of reach
 			}
 
@@ -197,11 +201,11 @@ public class OcclusionCulling {
 			}
 
 			// Calculate cache relative coords
-			int cx = (int) Math.floor((x0 - x) + REACH);
-			int cy = (int) Math.floor((y0 - y) + REACH);
-			int cz = (int) Math.floor((z0 - z) + REACH);
+			int cx = (int) Math.floor((x0 - x) + tileRange);
+			int cy = (int) Math.floor((y0 - y) + tileRange);
+			int cz = (int) Math.floor((z0 - z) + tileRange);
 			// Calculate cache key
-			int keyPos = cx + cy * (REACH * 2) + cz * (REACH * 2) * (REACH * 2);
+			int keyPos = cx + cy * (tileRange * 2) + cz * (tileRange * 2) * (tileRange * 2);
 			int entry = keyPos / 4;
 			if (entry > cache.length - 1) {
 				// Something went wrong... we exceeded the cache size!
@@ -224,7 +228,7 @@ public class OcclusionCulling {
 					// Need to fetch chunk snapshot
 					chunkX = currentChunkX;
 					chunkZ = currentChunkZ;
-					long chunkKey = Chunk.getChunkKey(chunkX, chunkZ);
+					long chunkKey = LocationUtilities.getChunkKey(chunkX, chunkZ);
 					snapshot = chunkCache.getChunk(world, chunkKey);
 				}
 
