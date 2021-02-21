@@ -68,7 +68,7 @@ public class OcclusionCulling {
 	}
 
 	public void resetCache() {
-		//cache.clear();
+		cache.clear();
 	}
 
 	/**
