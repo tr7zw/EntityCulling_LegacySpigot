@@ -1,6 +1,5 @@
 package it.feargames.tileculling.adapter;
 
-import com.comphenix.protocol.events.PacketContainer;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.server.v1_16_R3.*;
 import org.bukkit.Location;
@@ -13,20 +12,6 @@ import org.bukkit.entity.Player;
 
 public class Adapter_1_16_R3 implements IAdapter {
 
-	private static class CustomPacketPlayOutBlockChange extends PacketPlayOutBlockChange {
-
-		public CustomPacketPlayOutBlockChange(BlockPosition blockPosition, IBlockData blockData) {
-			super(blockPosition, blockData);
-		}
-	}
-
-	private static class CustomPacketPlayOutTileEntityData extends PacketPlayOutTileEntityData {
-
-		public CustomPacketPlayOutTileEntityData(BlockPosition blockPosition, int action, NBTTagCompound compound) {
-			super(blockPosition, action, compound);
-		}
-	}
-
 	@Override
 	public void updateBlockState(Player player, Location location, BlockData blockData) {
 		CraftPlayer craftPlayer = (CraftPlayer) player;
@@ -38,7 +23,7 @@ public class Adapter_1_16_R3 implements IAdapter {
 
 		BlockPosition blockPosition = new BlockPosition(location.getBlockX(), location.getBlockY(), location.getBlockZ());
 		IBlockData handleData = blockData == null ? Blocks.AIR.getBlockData() : ((CraftBlockData) blockData).getState();
-		PacketPlayOutBlockChange blockChange = new CustomPacketPlayOutBlockChange(blockPosition, handleData);
+		PacketPlayOutBlockChange blockChange = new PacketPlayOutBlockChange(blockPosition, handleData);
 		connection.sendPacket(blockChange);
 	}
 
@@ -85,14 +70,8 @@ public class Adapter_1_16_R3 implements IAdapter {
 		CraftBlockEntityState<?> craftBlockEntityState = (CraftBlockEntityState<?>) block;
 		NBTTagCompound nbt = craftBlockEntityState.getSnapshotNBT();
 		BlockPosition blockPosition = new BlockPosition(location.getBlockX(), location.getBlockY(), location.getBlockZ());
-		PacketPlayOutTileEntityData packet = new CustomPacketPlayOutTileEntityData(blockPosition, action, nbt);
+		PacketPlayOutTileEntityData packet = new PacketPlayOutTileEntityData(blockPosition, action, nbt);
 		connection.sendPacket(packet);
-	}
-
-	@Override
-	public boolean isCustomPacket(PacketContainer container) {
-		Object packet = container.getHandle();
-		return packet instanceof CustomPacketPlayOutBlockChange || packet instanceof CustomPacketPlayOutTileEntityData;
 	}
 
 	@Override

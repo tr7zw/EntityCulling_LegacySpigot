@@ -208,6 +208,7 @@ public class OcclusionCulling {
 			int keyPos = cx + cy * (tileRange * 2) + cz * (tileRange * 2) * (tileRange * 2);
 			int entry = keyPos / 4;
 			if (entry > cache.length - 1) {
+				// FIXME: sometimes this happens... maybe we should doublecheck the range logic
 				// Something went wrong... we exceeded the cache size!
 				throw new RuntimeException("Illegal cache relative coordinates!");
 			}
