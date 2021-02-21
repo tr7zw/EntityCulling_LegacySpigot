@@ -1,9 +1,7 @@
-package it.feargames.tileculling.occlusionculling;
+package it.feargames.tileculling;
 
-import it.feargames.tileculling.CullingPlugin;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.ChunkSnapshot;
 import org.bukkit.World;
@@ -19,20 +17,23 @@ import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class BlockChangeListener implements Listener {
+public class ChunkCache implements Listener {
+
+	private final CullingPlugin plugin;
 
 	private final Map<World, Long2ObjectMap<ChunkEntry>> cachedChunks = new HashMap<>();
-
 	private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 	private final ReentrantReadWriteLock.WriteLock writeLock = lock.writeLock();
 	private final ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
 
-	public BlockChangeListener() {
-		for (World world : Bukkit.getWorlds()) {
+	public ChunkCache(CullingPlugin plugin) {
+		this.plugin = plugin;
+		for (World world : plugin.getServer().getWorlds()) {
 			for (Chunk chunk : world.getLoadedChunks()) {
 				updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk);
 			}
@@ -52,13 +53,25 @@ public class BlockChangeListener implements Listener {
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onBlockPlace(BlockPlaceEvent e) {
 		Chunk chunk = e.getBlock().getChunk();
-		updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk);
+		// We have to delay as tile entities are updated after the block has changed
+		new BukkitRunnable() {
+			@Override
+			public void run() {
+				updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk);
+			}
+		}.runTask(plugin);
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onBlockBreak(BlockBreakEvent e) {
 		Chunk chunk = e.getBlock().getChunk();
-		updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk);
+		// We have to delay as tile entities are updated after the block has changed
+		new BukkitRunnable() {
+			@Override
+			public void run() {
+				updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk);
+			}
+		}.runTask(plugin);
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -113,16 +126,11 @@ public class BlockChangeListener implements Listener {
 		try {
 			writeLock.lock();
 			ChunkEntry entry = cachedChunks.computeIfAbsent(world, k -> new Long2ObjectOpenHashMap<>()).computeIfAbsent(chunkKey, k -> new ChunkEntry());
-			entry.snapshot = chunk.getChunkSnapshot();
+			entry.snapshot = chunk.getChunkSnapshot(false, false, false);
 			entry.tiles = filterTiles(chunk.getTileEntities());
 		} finally {
 			writeLock.unlock();
 		}
-		// Must be done on the main thread
-		/*
-		CullingPlugin.runTask(() -> {
-		});
-		*/
 	}
 
 	private List<BlockState> filterTiles(BlockState[] tiles) {

@@ -1,28 +1,41 @@
 package it.feargames.tileculling.occlusionculling;
 
+import it.feargames.tileculling.ChunkCache;
 import it.feargames.tileculling.CullingPlugin;
-import it.feargames.tileculling.VectorUtilities;
-import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
+import it.feargames.tileculling.util.VectorUtilities;
 import org.bukkit.*;
-import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
+import java.util.Arrays;
+
 public class OcclusionCulling {
 
-	private final Long2ByteOpenHashMap cache = new Long2ByteOpenHashMap();
+	private final ChunkCache chunkCache;
+
+	private static final int REACH = 64; // TODO: config
+	private final byte[] cache = new byte[((REACH * 2) * (REACH * 2) * (REACH * 2)) / 4];
+
+	public OcclusionCulling(ChunkCache chunkCache) {
+		this.chunkCache = chunkCache;
+	}
 
 	public boolean isAABBVisible(Player player, Vector playerEyeLocation, Location aabbBlock, AxisAlignedBB aabb) {
 		try {
 			if (playerEyeLocation.getY() > 255 || playerEyeLocation.getY() < 0) {
-				return false;
+				return false; // Ignore if player is outside of world bounds
+			}
+
+			Vector center = aabb.getAABBMiddle(aabbBlock);
+
+			if (center.distanceSquared(playerEyeLocation) > (REACH * REACH)) {
+				return false; // Out of reach
 			}
 
 			double width = aabb.getWidth();
 			double height = aabb.getHeight();
 			double depth = aabb.getDepth();
 
-			Vector center = aabb.getAABBMiddle(aabbBlock);
 			Vector centerXMin = VectorUtilities.cloneAndAdd(center, -width / 2, 0, 0);
 			Vector centerXMax = VectorUtilities.cloneAndAdd(center, width / 2, 0, 0);
 			Vector centerYMin = VectorUtilities.cloneAndAdd(center, 0, -height / 2, 0);
@@ -30,22 +43,29 @@ public class OcclusionCulling {
 			Vector centerZMin = VectorUtilities.cloneAndAdd(center, 0, 0, -depth / 2);
 			Vector centerZMax = VectorUtilities.cloneAndAdd(center, 0, 0, depth / 2);
 
-			Vector[] targets = new Vector[4];
-			targets[0] = centerYMin.subtract(playerEyeLocation);
-			targets[1] = centerYMax.subtract(playerEyeLocation);
+			//CullingPlugin.particle(player, Particle.SNOWBALL, center);
+
+			Vector[] rays = new Vector[4];
+			//CullingPlugin.particle(player, Particle.VILLAGER_HAPPY, centerYMin, centerYMax);
+			rays[0] = centerYMin.subtract(playerEyeLocation);
+			rays[1] = centerYMax.subtract(playerEyeLocation);
 
 			if (centerXMin.distanceSquared(playerEyeLocation) > centerXMax.distanceSquared(playerEyeLocation)) {
-				targets[2] = centerXMin.subtract(playerEyeLocation);
+				//CullingPlugin.particle(player, Particle.VILLAGER_HAPPY, centerXMax);
+				rays[2] = centerXMax.subtract(playerEyeLocation);
 			} else {
-				targets[2] = centerXMax.subtract(playerEyeLocation);
+				//CullingPlugin.particle(player, Particle.VILLAGER_HAPPY, centerXMin);
+				rays[2] = centerXMin.subtract(playerEyeLocation);
 			}
 			if (centerZMin.distanceSquared(playerEyeLocation) > centerZMax.distanceSquared(playerEyeLocation)) {
-				targets[3] = centerZMin.subtract(playerEyeLocation);
+				//CullingPlugin.particle(player, Particle.VILLAGER_HAPPY, centerZMax);
+				rays[3] = centerZMax.subtract(playerEyeLocation);
 			} else {
-				targets[3] = centerZMax.subtract(playerEyeLocation);
+				//CullingPlugin.particle(player, Particle.VILLAGER_HAPPY, centerZMin);
+				rays[3] = centerZMin.subtract(playerEyeLocation);
 			}
 
-			return isVisible(player, player.getWorld(), playerEyeLocation, targets);
+			return isVisible(player, player.getWorld(), playerEyeLocation, rays);
 		} catch (Throwable t) {
 			// Failsafe
 			t.printStackTrace();
@@ -54,7 +74,7 @@ public class OcclusionCulling {
 	}
 
 	public void resetCache() {
-		cache.clear();
+		Arrays.fill(cache, (byte) 0);
 	}
 
 	/**
@@ -62,15 +82,17 @@ public class OcclusionCulling {
 	 * <a href=
 	 * "http://playtechs.blogspot.de/2007/03/raytracing-on-grid.html">http://playtechs.blogspot.de/2007/03/raytracing-on-grid.html</a>
 	 */
-	private boolean isVisible(Player player, World world, Vector start, Vector[] targets) {
-		for (Vector target : targets) {
-			// coordinates of start and target point
-			double x0 = start.getX();
-			double y0 = start.getY();
-			double z0 = start.getZ();
-			double x1 = x0 + target.getX();
-			double y1 = y0 + target.getY();
-			double z1 = z0 + target.getZ();
+	private boolean isVisible(Player player, World world, Vector start, Vector[] rays) {
+		// start point coords
+		double x0 = start.getX();
+		double y0 = start.getY();
+		double z0 = start.getZ();
+
+		for (Vector ray : rays) {
+			// target point coords
+			double x1 = x0 + ray.getX();
+			double y1 = y0 + ray.getY();
+			double z1 = z0 + ray.getZ();
 
 			// horizontal and vertical cell amount spanned
 			double dx = Math.abs(x1 - x0);
@@ -151,7 +173,7 @@ public class OcclusionCulling {
 				// the first cell
 			}
 
-			boolean finished = stepRay(player, world, x, y, z, dt_dx, dt_dy, dt_dz, n, x_inc, y_inc, z_inc, t_next_y, t_next_x, t_next_z);
+			boolean finished = stepRay(player, world, x0, y0, z0, x, y, z, dt_dx, dt_dy, dt_dz, n, x_inc, y_inc, z_inc, t_next_y, t_next_x, t_next_z);
 			if (finished) {
 				return true;
 			}
@@ -159,7 +181,7 @@ public class OcclusionCulling {
 		return false;
 	}
 
-	private boolean stepRay(Player player, World world, int x, int y,
+	private boolean stepRay(Player player, World world, double x0, double y0, double z0, int x, int y,
 							int z, double dt_dx, double dt_dy, double dt_dz, int n, int x_inc, int y_inc, int z_inc, double t_next_y,
 							double t_next_x, double t_next_z) {
 		int chunkX = 0;
@@ -169,54 +191,56 @@ public class OcclusionCulling {
 
 		// iterate through all intersecting cells (n times)
 		for (; n > 0; n--) {
-			long key = Block.getBlockKey(x, y, z);
-			byte cVal = cache.get(key); // Default is 0
+			if (y < 0 || y > 255) {
+				// Impossible coordinates
+				throw new RuntimeException("Invalid Y value! " + y);
+			}
+
+			// Calculate cache relative coords
+			int cx = (int) Math.floor((x0 - x) + REACH);
+			int cy = (int) Math.floor((y0 - y) + REACH);
+			int cz = (int) Math.floor((z0 - z) + REACH);
+			// Calculate cache key
+			int keyPos = cx + cy * (REACH * 2) + cz * (REACH * 2) * (REACH * 2);
+			int entry = keyPos / 4;
+			if (entry > cache.length - 1) {
+				// Something went wrong... we exceeded the cache size!
+				throw new RuntimeException("Illegal cache relative coordinates!");
+			}
+			int offset = (keyPos % 4) * 2;
+			// Get cached value, 0 means uncached (default)
+			int cVal = cache[entry] >> offset & 3;
 
 			if (cVal == 2) {
+				// Block cached as occluding, stop ray
 				return false;
 			}
 
 			if (cVal == 0) {
-				// save current cell
+				// Block is not cached, analyze chunk snapshot
 				int currentChunkX = x >> 4;
 				int currentChunkZ = z >> 4;
 				if (snapshot == null || chunkX != currentChunkX || chunkZ != currentChunkZ) {
+					// Need to fetch chunk snapshot
 					chunkX = currentChunkX;
 					chunkZ = currentChunkZ;
 					long chunkKey = Chunk.getChunkKey(chunkX, chunkZ);
-					snapshot = CullingPlugin.instance.blockChangeListener.getChunk(world, chunkKey);
+					snapshot = chunkCache.getChunk(world, chunkKey);
 				}
 
 				if (snapshot == null) {
-					System.err.println("Missing chunk snapshot! " + currentChunkX + " " + currentChunkZ);
+					// Looks normal, a ray can just step into an unloaded chunk
 					return false;
-				}
-
-				/*
-				if (false && player.getName().equals("sgdc3") && CullTask.particleTick > CullTask.PARTICLE_INTERVAL) {
-					player.spawnParticle(Particle.VILLAGER_HAPPY, x, y, z, 1);
-				}
-				*/
-
-				if (y < 0 || y > 255) {
-					System.err.println("Invalid Y " + y);
-					return false; // Should never happen
 				}
 
 				int relativeX = x & 0xF;
 				int relativeZ = z & 0xF;
 				Material material = snapshot.getBlockType(relativeX, y, relativeZ);
 				if (CullingPlugin.isOccluding(material)) {
-					cache.put(key, (byte) 2);
-					/*
-					if (player.getName().equals("sgdc3") && CullTask.particleTick > CullTask.PARTICLE_INTERVAL) {
-						System.err.println(material.name() + " " + x + " " + z + " | " + relativeX + " " + relativeZ);
-						player.spawnParticle(Particle.BARRIER, x + 0.5, y + 0.5, z + 0.5, 1);
-					}
-					*/
+					cache[entry] |= 1 << offset + 1;
 					return false;
 				}
-				cache.put(key, (byte) 1);
+				cache[entry] |= 1 << offset;
 			}
 
 			if (t_next_y < t_next_x && t_next_y < t_next_z) { // next cell is upwards/downwards because the distance to the next vertical

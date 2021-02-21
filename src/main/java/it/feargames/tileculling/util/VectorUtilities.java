@@ -1,4 +1,4 @@
-package it.feargames.tileculling;
+package it.feargames.tileculling.util;
 
 import org.bukkit.util.Vector;
 

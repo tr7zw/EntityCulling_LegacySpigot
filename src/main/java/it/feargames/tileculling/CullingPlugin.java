@@ -1,7 +1,9 @@
 package it.feargames.tileculling;
 
-import it.feargames.tileculling.occlusionculling.BlockChangeListener;
-import org.bukkit.Bukkit;
+import com.comphenix.protocol.ProtocolLibrary;
+import it.feargames.tileculling.adapter.Adapter_1_16_R3;
+import it.feargames.tileculling.adapter.IAdapter;
+import it.feargames.tileculling.protocol.MapChunkPacketListener;
 import org.bukkit.Material;
 import org.bukkit.block.*;
 import org.bukkit.inventory.BlockInventoryHolder;
@@ -9,56 +11,48 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class CullingPlugin extends JavaPlugin {
 
-	public static final int TASK_INTERVAL = 50;
+	private IAdapter adapter;
 
-	public static CullingPlugin instance;
+	private ChunkTileVisibilityManager chunkTileVisibilityManager;
+	private PlayerChunkTracker playerChunkTracker;
+	private ChunkCache chunkCache;
+	private VisibilityCache visibilityCache;
+	private MapChunkPacketListener mapChunkPacketListener;
 
-	public BlockChangeListener blockChangeListener;
-	public PlayerCache cache;
-
-	private Thread thread;
+	private VisibilityUpdateThread visibilityUpdateThread;
 
 	@Override
 	public void onEnable() {
-		instance = this;
+		adapter = new Adapter_1_16_R3();
+		playerChunkTracker = new PlayerChunkTracker(this);
+		visibilityCache = new VisibilityCache();
+		chunkCache = new ChunkCache(this);
+		chunkTileVisibilityManager = new ChunkTileVisibilityManager(adapter, playerChunkTracker, visibilityCache, chunkCache);
 
-		blockChangeListener = new BlockChangeListener();
-		cache = new PlayerCache();
+		getServer().getPluginManager().registerEvents(playerChunkTracker, this);
+		getServer().getPluginManager().registerEvents(chunkCache, this);
+		getServer().getPluginManager().registerEvents(visibilityCache, this);
 
-		getServer().getPluginManager().registerEvents(blockChangeListener, this);
-		getServer().getPluginManager().registerEvents(cache, this);
+		mapChunkPacketListener = new MapChunkPacketListener(this, adapter, playerChunkTracker);
+		ProtocolLibrary.getProtocolManager().addPacketListener(mapChunkPacketListener);
 
-		Runnable task = new CullTask(this);
-		thread = new Thread(() -> {
-			while (true) {
-				long start = System.currentTimeMillis();
-				task.run();
-				long took = System.currentTimeMillis() - start;
-				long sleep = Math.max(0, TASK_INTERVAL - took);
-				if (sleep > 0) {
-					try {
-						Thread.sleep(sleep);
-					} catch (InterruptedException e) {
-					}
-				}
-			}
-		});
-		thread.start();
+		visibilityUpdateThread = new VisibilityUpdateThread(chunkTileVisibilityManager);
+		visibilityUpdateThread.start();
 	}
 
 	@Override
 	public void onDisable() {
-		if (thread != null) {
-			thread.interrupt();
+		// Remove packet listeners
+		ProtocolLibrary.getProtocolManager().removePacketListeners(this);
+
+		// Stop update task
+		if (visibilityUpdateThread != null) {
+			visibilityUpdateThread.shutdown();
 		}
 	}
 
-	public static void runTask(Runnable task) {
-		if (!CullingPlugin.instance.isEnabled()) {
-			return;
-		}
-		Bukkit.getScheduler().runTask(CullingPlugin.instance, task);
-	}
+	// TODO: create a registry
+	// TODO: SIGNS
 
 	public static boolean shouldHide(BlockState state) {
 		return state instanceof BlockInventoryHolder
@@ -66,28 +60,39 @@ public class CullingPlugin extends JavaPlugin {
 				|| state instanceof CreatureSpawner
 				|| state instanceof EnchantingTable
 				|| state instanceof Banner
-				|| state instanceof Skull
-				//|| state instanceof Sign
-				;
+				|| state instanceof Skull;
 	}
 
-	// TODO: improve
+	public static boolean shouldHide(String namespacedKey) {
+		return namespacedKey.equals("minecraft:chest")
+				|| namespacedKey.equals("minecraft:trapped_chest")
+				|| namespacedKey.equals("minecraft:furnace")
+				|| namespacedKey.equals("minecraft:dispenser")
+				|| namespacedKey.equals("minecraft:dropper")
+				|| namespacedKey.equals("minecraft:hopper")
+				|| namespacedKey.equals("minecraft:brewing_stand")
+				|| namespacedKey.endsWith("shulker_box")
+				|| namespacedKey.equals("minecraft:barrel")
+				|| namespacedKey.equals("minecraft:ender_chest")
+				// Misc
+				|| namespacedKey.equals("minecraft:spawner")
+				|| namespacedKey.equals("minecraft:enchanting_table")
+				// Heads/Skulls
+				|| namespacedKey.equals("minecraft:player_head")
+				|| namespacedKey.equals("minecraft:dragon_head")
+				|| namespacedKey.equals("minecraft:creeper_head")
+				|| namespacedKey.equals("minecraft:skeleton_skull")
+				|| namespacedKey.equals("minecraft:wither_skeleton_skull")
+				|| namespacedKey.equals("minecraft:zombie_head");
+	}
+
 	public static boolean isOccluding(Material material) {
-		if (material.isAir()) {
-			return false;
-		}
 		switch (material) {
-			case CHEST:
-			case TRAPPED_CHEST:
-			case ENDER_CHEST:
-			case WATER:
 			case BARRIER:
 			case SPAWNER:
-			case BEACON:
 				return false;
 		}
 		// TODO: are we sure we want to use this?
 		return material.isOccluding();
 	}
-
 }
