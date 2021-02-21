@@ -14,6 +14,7 @@ public class VisibilityUpdateThread extends Thread {
 	private final AtomicBoolean running = new AtomicBoolean(false);
 
 	public VisibilityUpdateThread(ChunkTileVisibilityManager chunkTileVisibilityManager) {
+		super("TileCulling-VisibilityUpdateThread");
 		this.chunkTileVisibilityManager = chunkTileVisibilityManager;
 	}
 
