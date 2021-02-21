@@ -13,6 +13,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
@@ -53,7 +54,7 @@ public class ChunkCache implements Listener {
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onBlockPlace(BlockPlaceEvent e) {
 		Chunk chunk = e.getBlock().getChunk();
-		// We have to delay as tile entities are updated after the block has changed
+		// We have to delay as tile entities are updated after the event has completed
 		new BukkitRunnable() {
 			@Override
 			public void run() {
@@ -65,7 +66,19 @@ public class ChunkCache implements Listener {
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onBlockBreak(BlockBreakEvent e) {
 		Chunk chunk = e.getBlock().getChunk();
-		// We have to delay as tile entities are updated after the block has changed
+		// We have to delay as tile entities are updated after the event has completed
+		new BukkitRunnable() {
+			@Override
+			public void run() {
+				updateCachedChunkSync(chunk.getWorld(), chunk.getChunkKey(), chunk);
+			}
+		}.runTask(plugin);
+	}
+
+	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+	public void onSignUpdate(SignChangeEvent e) {
+		Chunk chunk = e.getBlock().getChunk();
+		// We have to delay as tile entities are updated after the event has completed
 		new BukkitRunnable() {
 			@Override
 			public void run() {

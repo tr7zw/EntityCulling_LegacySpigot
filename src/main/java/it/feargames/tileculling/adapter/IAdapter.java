@@ -3,6 +3,7 @@ package it.feargames.tileculling.adapter;
 import io.netty.buffer.ByteBuf;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 
@@ -11,6 +12,8 @@ public interface IAdapter {
 	void updateBlockState(Player player, Location location, BlockData blockData);
 
 	void updateBlockState(Player player, Location location, Material material, byte data);
+
+	void updateBlockData(Player player, Location location, BlockState block);
 
 	ByteBuf packetDataSerializer(ByteBuf byteBuf);
 

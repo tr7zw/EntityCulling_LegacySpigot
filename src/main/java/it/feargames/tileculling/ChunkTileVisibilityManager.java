@@ -15,8 +15,7 @@ import java.util.List;
 
 public class ChunkTileVisibilityManager {
 
-	public static final int CHUNK_RANGE = 6; // TODO: makes no sense to have a chunk range, not this way at least
-	public static final AxisAlignedBB BLOCK_AABB = new AxisAlignedBB(0d, 0d, 0d, 1d, 1d, 1d);
+	private static final AxisAlignedBB BLOCK_AABB = new AxisAlignedBB(0d, 0d, 0d, 1d, 1d, 1d);
 
 	private final IAdapter adapter;
 	private final PlayerChunkTracker playerTracker;
@@ -36,41 +35,50 @@ public class ChunkTileVisibilityManager {
 
 	public void updateVisibility(Player player) {
 		World world = player.getWorld();
-		Location playerLocation = player.getLocation();
-
 		Vector playerEyeLocation = player.getEyeLocation().toVector();
-
-		int playerChunkX = playerLocation.getBlockX() >> 4;
-		int playerChunkZ = playerLocation.getBlockZ() >> 4;
 
 		culling.resetCache();
 
-		for (int x = -CHUNK_RANGE; x <= CHUNK_RANGE; x++) {
-			for (int z = -CHUNK_RANGE; z <= CHUNK_RANGE; z++) {
-				int chunkX = playerChunkX + x;
-				int chunkZ = playerChunkZ + z;
-				long chunkKey = Chunk.getChunkKey(chunkX, chunkZ);
+		long[] trackedChunks = playerTracker.getTrackedChunks(player);
+		if (trackedChunks == null) {
+			return;
+		}
+		for (long chunkKey : trackedChunks) {
+			List<BlockState> tiles = chunkCache.getChunkTiles(world, chunkKey);
+			if (tiles == null) {
+				continue;
+			}
+			for (BlockState block : tiles) {
+				Location bloc = block.getLocation();
+				boolean canSee = culling.isAABBVisible(player, playerEyeLocation, bloc, BLOCK_AABB);
+				boolean hidden = visibilityCache.isHidden(player, bloc);
+				if (hidden && canSee) {
+					visibilityCache.setHidden(player, bloc, false);
+					adapter.updateBlockState(player, bloc, block.getBlockData());
+					adapter.updateBlockData(player, bloc, block);
+				} else if (!hidden && !canSee) {
+					visibilityCache.setHidden(player, bloc, true);
+					adapter.updateBlockState(player, bloc, Material.AIR, (byte) 0);
+				}
+			}
+		}
+	}
 
-				if (!playerTracker.isChunkTracked(player, chunkKey)) {
-					continue;
-				}
-
-				List<BlockState> tiles = chunkCache.getChunkTiles(world, chunkKey);
-				if (tiles == null) {
-					continue;
-				}
-				for (BlockState block : tiles) {
-					Location bloc = block.getLocation();
-					boolean canSee = culling.isAABBVisible(player, playerEyeLocation, bloc, BLOCK_AABB);
-					boolean hidden = visibilityCache.isHidden(player, block.getLocation());
-					if (hidden && canSee) {
-						visibilityCache.setHidden(player, block.getLocation(), false);
-						adapter.updateBlockState(player, block.getLocation(), block.getBlockData());
-					} else if (!hidden && !canSee) {
-						visibilityCache.setHidden(player, block.getLocation(), true);
-						adapter.updateBlockState(player, block.getLocation(), Material.AIR, (byte) 0);
-					}
-				}
+	public void restoreVisibility(Player player) {
+		World world = player.getWorld();
+		long[] trackedChunks = playerTracker.getTrackedChunks(player);
+		if (trackedChunks == null) {
+			return;
+		}
+		for (long chunkKey : trackedChunks) {
+			List<BlockState> tiles = chunkCache.getChunkTiles(world, chunkKey);
+			if (tiles == null) {
+				continue;
+			}
+			for (BlockState block : tiles) {
+				Location bloc = block.getLocation();
+				adapter.updateBlockState(player, bloc, block.getBlockData());
+				adapter.updateBlockData(player, bloc, block);
 			}
 		}
 	}

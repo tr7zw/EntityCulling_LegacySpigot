@@ -1,13 +1,18 @@
 package it.feargames.tileculling;
 
 import com.comphenix.protocol.ProtocolLibrary;
+import com.destroystokyo.paper.MaterialTags;
 import it.feargames.tileculling.adapter.Adapter_1_16_R3;
 import it.feargames.tileculling.adapter.IAdapter;
 import it.feargames.tileculling.protocol.MapChunkPacketListener;
 import org.bukkit.Material;
-import org.bukkit.block.*;
-import org.bukkit.inventory.BlockInventoryHolder;
+import org.bukkit.block.BlockState;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class CullingPlugin extends JavaPlugin {
 
@@ -49,41 +54,63 @@ public class CullingPlugin extends JavaPlugin {
 		if (visibilityUpdateThread != null) {
 			visibilityUpdateThread.shutdown();
 		}
+
+		// Restore visibility
+		if (chunkTileVisibilityManager != null) {
+			for (Player player : getServer().getOnlinePlayers()) {
+				chunkTileVisibilityManager.restoreVisibility(player);
+			}
+		}
 	}
 
 	// TODO: create a registry
-	// TODO: SIGNS
 
-	public static boolean shouldHide(BlockState state) {
-		return state instanceof BlockInventoryHolder
-				|| state instanceof EnderChest
-				|| state instanceof CreatureSpawner
-				|| state instanceof EnchantingTable
-				|| state instanceof Banner
-				|| state instanceof Skull;
+	private static final Material[] hiddenMaterials;
+	private static final String[] hiddenNamespaces;
+
+	static {
+		List<Material> materials = new ArrayList<>(Arrays.asList(
+				Material.CHEST,
+				Material.TRAPPED_CHEST,
+				Material.ENDER_CHEST,
+				Material.FURNACE,
+				Material.DISPENSER,
+				Material.DROPPER,
+				Material.HOPPER,
+				Material.BREWING_STAND,
+				Material.BARREL,
+				Material.SPAWNER,
+				Material.ENCHANTING_TABLE
+
+		));
+		materials.addAll(MaterialTags.SHULKER_BOXES.getValues());
+		materials.addAll(MaterialTags.SKULLS.getValues());
+		materials.addAll(MaterialTags.SIGNS.getValues());
+		// Cache values
+		hiddenMaterials = materials.toArray(new Material[0]);
+		hiddenNamespaces = materials.stream().map(material -> material.getKey().toString()).toArray(String[]::new);
 	}
 
 	public static boolean shouldHide(String namespacedKey) {
-		return namespacedKey.equals("minecraft:chest")
-				|| namespacedKey.equals("minecraft:trapped_chest")
-				|| namespacedKey.equals("minecraft:furnace")
-				|| namespacedKey.equals("minecraft:dispenser")
-				|| namespacedKey.equals("minecraft:dropper")
-				|| namespacedKey.equals("minecraft:hopper")
-				|| namespacedKey.equals("minecraft:brewing_stand")
-				|| namespacedKey.endsWith("shulker_box")
-				|| namespacedKey.equals("minecraft:barrel")
-				|| namespacedKey.equals("minecraft:ender_chest")
-				// Misc
-				|| namespacedKey.equals("minecraft:spawner")
-				|| namespacedKey.equals("minecraft:enchanting_table")
-				// Heads/Skulls
-				|| namespacedKey.equals("minecraft:player_head")
-				|| namespacedKey.equals("minecraft:dragon_head")
-				|| namespacedKey.equals("minecraft:creeper_head")
-				|| namespacedKey.equals("minecraft:skeleton_skull")
-				|| namespacedKey.equals("minecraft:wither_skeleton_skull")
-				|| namespacedKey.equals("minecraft:zombie_head");
+		for (String current : hiddenNamespaces) {
+			if (current.equals(namespacedKey)) {
+				return true;
+			}
+		}
+		return true;
+	}
+
+	public static boolean shouldHide(Material material) {
+		for (Material current : hiddenMaterials) {
+			if (current == material) {
+				return true;
+			}
+		}
+		return true;
+	}
+
+	public static boolean shouldHide(BlockState state) {
+		return shouldHide(state.getType());
 	}
 
 	public static boolean isOccluding(Material material) {

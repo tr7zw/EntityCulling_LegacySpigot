@@ -83,6 +83,7 @@ public class PlayerChunkTracker implements Listener {
 		}
 	}
 
+	/*
 	public boolean isChunkTracked(Player player, long chunkKey) {
 		try {
 			readLock.lock();
@@ -91,6 +92,20 @@ public class PlayerChunkTracker implements Listener {
 				return false;
 			}
 			return trackedChunks.contains(chunkKey);
+		} finally {
+			readLock.unlock();
+		}
+	}
+	*/
+
+	public long[] getTrackedChunks(Player player) {
+		try {
+			readLock.lock();
+			LongSet trackedChunks = trackedPlayers.get(player);
+			if (trackedChunks == null) {
+				return null;
+			}
+			return trackedChunks.toArray(new long[0]);
 		} finally {
 			readLock.unlock();
 		}
