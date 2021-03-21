@@ -1,9 +1,6 @@
 package it.feargames.tileculling.util;
 
-import org.bukkit.Chunk;
-import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.block.Block;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
