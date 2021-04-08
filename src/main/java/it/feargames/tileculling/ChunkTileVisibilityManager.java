@@ -1,7 +1,6 @@
 package it.feargames.tileculling;
 
 import com.logisticscraft.occlusionculling.OcclusionCullingInstance;
-import com.logisticscraft.occlusionculling.util.AxisAlignedBB;
 import com.logisticscraft.occlusionculling.util.Vec3d;
 import it.feargames.tileculling.adapter.IAdapter;
 import it.feargames.tileculling.occlusionculling.PaperDataProvider;
@@ -23,6 +22,10 @@ public class ChunkTileVisibilityManager {
 	private final PaperDataProvider dataProvider;
 	private final OcclusionCullingInstance culling;
 
+	private final Vec3d viewerPosition = new Vec3d(0, 0, 0);
+	private final Vec3d aabbMin = new Vec3d(0, 0, 0);
+	private final Vec3d aabbMax = new Vec3d(0, 0, 0);
+
 	public ChunkTileVisibilityManager(SettingsHolder settings, IAdapter adapter, PlayerChunkTracker playerTracker, VisibilityCache visibilityCache, ChunkCache chunkCache) {
 		this.adapter = adapter;
 		this.playerTracker = playerTracker;
@@ -40,7 +43,7 @@ public class ChunkTileVisibilityManager {
 			return;
 		}
 
-		Vec3d viewerPosition = new Vec3d(playerEyeLocation.getX(), playerEyeLocation.getY(), playerEyeLocation.getZ());
+		viewerPosition.set(playerEyeLocation.getX(), playerEyeLocation.getY(), playerEyeLocation.getZ());
 
 		culling.resetCache();
 		dataProvider.setWorld(world);
@@ -55,10 +58,10 @@ public class ChunkTileVisibilityManager {
 				continue;
 			}
 			for (BlockState block : tiles) {
-				AxisAlignedBB blockAABB = new AxisAlignedBB(block.getX(), block.getY(), block.getZ(),
-						block.getX() + 1, block.getY() + 1, block.getZ() + 1);
+				aabbMin.set(block.getX(), block.getY(), block.getZ());
+				aabbMax.set(block.getX() + 1, block.getY() + 1, block.getZ() + 1);
 				Location bloc = block.getLocation();
-				boolean canSee = culling.isAABBVisible(blockAABB, viewerPosition);
+				boolean canSee = culling.isAABBVisible(aabbMin, aabbMax, viewerPosition);
 				boolean hidden = visibilityCache.isHidden(player, bloc);
 				if (hidden && canSee) {
 					visibilityCache.setHidden(player, bloc, false);
