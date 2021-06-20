@@ -3,11 +3,14 @@ package it.feargames.tileculling;
 import it.feargames.tileculling.util.LocationUtilities;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
 
 import java.util.HashMap;
@@ -89,4 +92,19 @@ public class VisibilityCache implements Listener {
 		}
 	}
 
+	@EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+	public void onTeleport(PlayerTeleportEvent event) {
+		if (event.getTo() == null) {
+			return;
+		}
+		if (event.getFrom().getWorld() != event.getTo().getWorld()
+				|| event.getFrom().distance(event.getTo()) > 64) { // TODO: use view distance (or a bit less?)
+			try {
+				writeLock.lock();
+				hiddenBlocks.remove(event.getPlayer());
+			} finally {
+				writeLock.unlock();
+			}
+		}
+	}
 }
