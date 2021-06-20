@@ -68,7 +68,6 @@ public class ChunkTileVisibilityManager {
 					adapter.updateBlockState(player, bloc, block.getBlockData());
 					if (block instanceof TileState) {
 						adapter.updateBlockData(player, bloc, block);
-
 					}
 				} else if (!hidden && !canSee) {
 					visibilityCache.setHidden(player, bloc, true);
