@@ -59,7 +59,8 @@ public class ChunkPacketListener extends PacketAdapter {
 			return;
 		}
 
-		int bitMask = packet.getIntegers().read(2);
+
+		int bitMask = adapter.getChunkPacketBitmask(packet);
 		byte[] chunkData = packet.getByteArrays().read(0);
 
 		IntSet removedBlocks = null;
@@ -77,6 +78,15 @@ public class ChunkPacketListener extends PacketAdapter {
 			if (removedBlocks == null) {
 				removedBlocks = new IntOpenHashSet();
 			}
+
+			/*
+			System.err.println("===========================================");
+			System.err.println("POS " + compound.getInteger("x") + " " + compound.getInteger("y") + " " + compound.getInteger("z"));
+			System.err.println("CHUNK " + (compound.getInteger("x") >> 4) + (compound.getInteger("z") >> 4));
+			System.err.println("SECTION " + (compound.getInteger("y") >> 4));
+			System.err.println("REL " + (compound.getInteger("x") & 0xF) + " " + (compound.getInteger("y") & 0xF) + " " + (compound.getInteger("z") & 0xF));
+			System.err.println("===========================================");
+			*/
 
 			int rawY = compound.getInteger("y");
 			byte section = (byte) (rawY >> 4);

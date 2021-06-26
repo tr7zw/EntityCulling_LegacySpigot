@@ -1,5 +1,6 @@
 package it.feargames.tileculling.adapter;
 
+import com.comphenix.protocol.events.PacketContainer;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.server.v1_16_R3.*;
 import org.bukkit.Location;
@@ -89,5 +90,10 @@ public class Adapter_1_16_R3 implements IAdapter {
 	public void writeVarInt(ByteBuf byteBuf, int value) {
 		PacketDataSerializer serializer = (PacketDataSerializer) byteBuf;
 		serializer.d(value);
+	}
+
+	@Override
+	public int getChunkPacketBitmask(PacketContainer container) {
+		return container.getIntegers().read(2);
 	}
 }

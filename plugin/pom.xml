@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>it.feargames.tileculling</groupId>
+		<artifactId>tileculling-parent</artifactId>
+		<version>1.2.3-SNAPSHOT</version>
+		<relativePath>../pom.xml</relativePath>
+	</parent>
+
+	<artifactId>tileculling-plugin</artifactId>
+	<version>1.2.3-SNAPSHOT</version>
+
+	<dependencies>
+		<dependency>
+			<groupId>it.feargames.tileculling</groupId>
+			<artifactId>tileculling-v1_16_R3</artifactId>
+			<version>1.2.3-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>it.feargames.tileculling</groupId>
+			<artifactId>tileculling-v1_17_R1</artifactId>
+			<version>1.2.3-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>com.logisticscraft</groupId>
+			<artifactId>occlusionculling</artifactId>
+			<version>0.0.5-SNAPSHOT</version>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>3.2.1</version>
+				<executions>
+					<execution>
+						<id>shade</id>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<relocations>
+						<relocation>
+							<pattern>com.logisticscraft.occlusionculling</pattern>
+							<shadedPattern>it.feargames.tileculling.libs.com.logisticscraft.occlusionculling</shadedPattern>
+						</relocation>
+					</relocations>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>

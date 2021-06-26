@@ -1,5 +1,6 @@
 package it.feargames.tileculling.adapter;
 
+import com.comphenix.protocol.events.PacketContainer;
 import io.netty.buffer.ByteBuf;
 import org.bukkit.Location;
 import org.bukkit.block.BlockState;
@@ -17,4 +18,6 @@ public interface IAdapter {
 	int readVarInt(ByteBuf byteBuf);
 
 	void writeVarInt(ByteBuf byteBuf, int value);
+
+	int getChunkPacketBitmask(PacketContainer packet);
 }

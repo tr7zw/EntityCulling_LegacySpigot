@@ -4,14 +4,21 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>it.feargames</groupId>
-	<artifactId>tileculling</artifactId>
-	<version>1.2.2-SNAPSHOT</version>
+	<groupId>it.feargames.tileculling</groupId>
+	<artifactId>tileculling-parent</artifactId>
+	<version>1.2.3-SNAPSHOT</version>
+	<packaging>pom</packaging>
+
+	<modules>
+		<module>nms</module>
+		<module>v1_16_R3</module>
+		<module>v1_17_R1</module>
+		<module>plugin</module>
+	</modules>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<jdk.version>1.8</jdk.version>
 	</properties>
 
 	<repositories>
@@ -19,12 +26,6 @@
 			<id>spigot-repo</id>
 			<url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
 		</repository>
-		<!--
-		<repository>
-			<id>papermc</id>
-			<url>https://papermc.io/repo/repository/maven-public/</url>
-		</repository>
-		-->
 		<repository>
 			<id>codemc-repo</id>
 			<url>https://repo.codemc.io/repository/maven-public/</url>
@@ -47,31 +48,6 @@
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.spigotmc</groupId>
-			<artifactId>spigot</artifactId>
-			<version>1.16.5-R0.1-SNAPSHOT</version>
-			<scope>provided</scope>
-		</dependency>
-		<!--
-		<dependency>
-			<groupId>com.destroystokyo.paper</groupId>
-			<artifactId>paper-api</artifactId>
-			<version>1.16.5-R0.1-SNAPSHOT</version>
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>com.destroystokyo.paper</groupId>
-			<artifactId>paper</artifactId>
-			<version>1.16.5-R0.1-SNAPSHOT</version>
-			<scope>provided</scope>
-		</dependency>
-		-->
-		<dependency>
-			<groupId>com.logisticscraft</groupId>
-			<artifactId>occlusionculling</artifactId>
-			<version>0.0.5-SNAPSHOT</version>
-		</dependency>
-		<dependency>
 			<groupId>io.netty</groupId>
 			<artifactId>netty-all</artifactId>
 			<version>4.1.25.Final</version>
@@ -86,7 +62,7 @@
 		<dependency>
 			<groupId>com.comphenix.protocol</groupId>
 			<artifactId>ProtocolLib</artifactId>
-			<version>4.6.0</version>
+			<version>4.7.0-SNAPSHOT</version>
 			<scope>provided</scope>
 		</dependency>
 	</dependencies>
@@ -110,30 +86,8 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.0</version>
 				<configuration>
-					<source>${jdk.version}</source>
-					<target>${jdk.version}</target>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-shade-plugin</artifactId>
-				<version>3.2.1</version>
-				<executions>
-					<execution>
-						<id>shade</id>
-						<phase>package</phase>
-						<goals>
-							<goal>shade</goal>
-						</goals>
-					</execution>
-				</executions>
-				<configuration>
-					<relocations>
-						<relocation>
-							<pattern>com.logisticscraft.occlusionculling</pattern>
-							<shadedPattern>it.feargames.tileculling.libs.com.logisticscraft.occlusionculling</shadedPattern>
-						</relocation>
-					</relocations>
+					<source>8</source>
+					<target>8</target>
 				</configuration>
 			</plugin>
 		</plugins>
