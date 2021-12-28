@@ -103,7 +103,7 @@ public class ChunkPacketListener extends PacketAdapter {
 			return;
 		}
 
-		//chunkData.getListNbtModifier().write(0, tileEntities); TODO: can be removed?
+		adapter.writeChunkTileEntities(chunkData, tileEntities);
 
 		ByteBuf reader = adapter.packetDataSerializer(Unpooled.wrappedBuffer(chunkBuffer));
 		ByteBuf writer = adapter.packetDataSerializer(Unpooled.buffer(chunkBuffer.length));
@@ -116,26 +116,33 @@ public class ChunkPacketListener extends PacketAdapter {
 			short nonAirBlockCount = reader.readShort(); // TODO: Should decrease as we hide blocks?
 			writer.writeShort(nonAirBlockCount);
 
-			short bitsPerBlock = reader.readUnsignedByte();
-			if (bitsPerBlock < 4 || bitsPerBlock > 64) {
-				throw new RuntimeException("Invalid bits per block! (" + bitsPerBlock + ")");
-			}
+			int bitsPerBlock = reader.readByte();
+			System.err.println("BPB: " + bitsPerBlock);
 			writer.writeByte(bitsPerBlock);
 
 			int paletteAirIndex;
-			if (bitsPerBlock > 8) {
-				// Direct
+			if (bitsPerBlock == 0) {
+				// Empty chunk
+				paletteAirIndex = 0; // Global index
+			} else if (bitsPerBlock >= 9) {
+				// Global palette
+				bitsPerBlock = adapter.ceilLog2(adapter.getBlockStateRegistrySize());
 				paletteAirIndex = 0; // Global index
 			} else {
-				// Indirect
+				if (bitsPerBlock <= 4) {
+					// Linear palette
+					bitsPerBlock = 4;
+				} else {
+					// HashMap palette
+				}
+
 				paletteAirIndex = -1;
 
 				int paletteLength = adapter.readVarInt(reader);
-				adapter.writeVarInt(writer, paletteLength);
-
+				int[] palette = new int[paletteLength];
 				for (int i = 0; i < paletteLength; i++) {
 					int globalId = adapter.readVarInt(reader);
-					adapter.writeVarInt(writer, globalId);
+					palette[i] = globalId;
 
 					if (globalId == 0) {
 						paletteAirIndex = i;
@@ -143,7 +150,16 @@ public class ChunkPacketListener extends PacketAdapter {
 				}
 
 				if (paletteAirIndex == -1) {
-					throw new RuntimeException("No air found in palette!");
+					paletteLength++;
+					int[] newPalette = new int[paletteLength];
+					System.arraycopy(palette, 0, newPalette, 0, palette.length);
+					newPalette[newPalette.length - 1] = 0;
+					palette = newPalette;
+				}
+
+				adapter.writeVarInt(writer, paletteLength);
+				for (int entry : palette) {
+					adapter.writeVarInt(writer, entry);
 				}
 			}
 
@@ -155,32 +171,34 @@ public class ChunkPacketListener extends PacketAdapter {
 				dataArray[i] = reader.readLong();
 			}
 
-			//int individualValueMask = ((1 << bitsPerBlock) - 1);
-			byte blocksPerLong = (byte) (64 / bitsPerBlock);
+			if (bitsPerBlock != 0) { // Ignore if chunk is "empty"
+				//int individualValueMask = ((1 << bitsPerBlock) - 1);
+				byte blocksPerLong = (byte) (64 / bitsPerBlock);
 
-			for (byte y = 0; y < 16; y++) {
-				for (byte z = 0; z < 16; z++) {
-					for (byte x = 0; x < 16; x++) {
-						int key = sectionY + (x << 8) + (y << 16) + (z << 24);
-						if (!removedBlocks.contains(key)) {
-							continue;
-						}
-
-						short blockNumber = (short) ((((y * 16) + z) * 16) + x);
-						short longIndex = (short) (blockNumber / blocksPerLong);
-
-						long previous = dataArray[longIndex];
-						byte startOffset = (byte) ((blockNumber % blocksPerLong) * bitsPerBlock);
-
-						long data = previous;
-						for (int i = 0; i < bitsPerBlock; i++) {
-							if ((paletteAirIndex & (1 << i)) == 1) {
-								data |= (1L << i + startOffset);
-							} else {
-								data &= ~(1L << i + startOffset);
+				for (byte y = 0; y < 16; y++) {
+					for (byte z = 0; z < 16; z++) {
+						for (byte x = 0; x < 16; x++) {
+							int key = sectionY + (x << 8) + (y << 16) + (z << 24);
+							if (!removedBlocks.contains(key)) {
+								continue;
 							}
+
+							short blockNumber = (short) ((((y * 16) + z) * 16) + x);
+							short longIndex = (short) (blockNumber / blocksPerLong);
+
+							long previous = dataArray[longIndex];
+							byte startOffset = (byte) ((blockNumber % blocksPerLong) * bitsPerBlock);
+
+							long data = previous;
+							for (int i = 0; i < bitsPerBlock; i++) {
+								if ((paletteAirIndex & (1 << i)) == 1) {
+									data |= (1L << i + startOffset);
+								} else {
+									data &= ~(1L << i + startOffset);
+								}
+							}
+							dataArray[longIndex] = data;
 						}
-						dataArray[longIndex] = data;
 					}
 				}
 			}

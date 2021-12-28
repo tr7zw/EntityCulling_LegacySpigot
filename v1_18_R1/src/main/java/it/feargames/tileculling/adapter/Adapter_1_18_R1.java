@@ -2,6 +2,7 @@ package it.feargames.tileculling.adapter;
 
 import com.comphenix.protocol.events.AbstractStructure;
 import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.wrappers.nbt.NbtBase;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
@@ -12,6 +13,7 @@ import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerPlayerConnection;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -199,6 +201,15 @@ public class Adapter_1_18_R1 implements IAdapter {
 	}
 
 	@Override
+	public void writeChunkTileEntities(AbstractStructure chunkData, List<?> tileEntities) {
+		try {
+			BLOCK_ENTITIES_DATA_FIELD.set(chunkData.getHandle(), tileEntities);
+		} catch (IllegalAccessException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	@Override
 	public String getChunkTileEntityType(Object tileEntity) {
 		try {
 			BlockEntityType<?> type = (BlockEntityType<?>) BLOCK_ENTITY_INFO_TYPE_FIELD.get(tileEntity);
@@ -225,4 +236,15 @@ public class Adapter_1_18_R1 implements IAdapter {
 			throw new RuntimeException(e);
 		}
 	}
+
+	@Override
+	public int ceilLog2(int value) {
+		return Mth.ceillog2(value);
+	}
+
+	@Override
+	public int getBlockStateRegistrySize() {
+		return net.minecraft.world.level.block.Block.BLOCK_STATE_REGISTRY.size();
+	}
+
 }

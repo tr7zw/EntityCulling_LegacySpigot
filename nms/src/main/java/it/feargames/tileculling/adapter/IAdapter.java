@@ -32,9 +32,16 @@ public interface IAdapter {
 
 	List<?> getChunkTileEntities(AbstractStructure chunkData);
 
+	void writeChunkTileEntities(AbstractStructure chunkData, List<?> tileEntities);
+
 	String getChunkTileEntityType(Object tileEntity);
 
 	int getChunkTileEntityXZ(Object tileEntity);
 
 	int getChunkTileEntityY(Object tileEntity);
+
+	int ceilLog2(int value);
+
+	int getBlockStateRegistrySize();
+
 }

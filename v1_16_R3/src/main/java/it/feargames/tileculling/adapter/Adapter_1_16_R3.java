@@ -1,9 +1,11 @@
 package it.feargames.tileculling.adapter;
 
 import com.comphenix.protocol.events.AbstractStructure;
+import com.comphenix.protocol.wrappers.nbt.NbtBase;
 import com.comphenix.protocol.wrappers.nbt.NbtCompound;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.server.v1_16_R3.*;
+import net.minecraft.server.v1_16_R3.Block;
 import org.bukkit.Location;
 import org.bukkit.block.*;
 import org.bukkit.block.data.BlockData;
@@ -106,6 +108,12 @@ public class Adapter_1_16_R3 implements IAdapter {
     }
 
     @Override
+    public void writeChunkTileEntities(AbstractStructure chunkData, List<?> tileEntities) {
+        //noinspection unchecked
+        chunkData.getListNbtModifier().write(0, (List<NbtBase<?>>) tileEntities);
+    }
+
+    @Override
     public String getChunkTileEntityType(Object tileEntity) {
         return ((NbtCompound) tileEntity).getString("id");
     }
@@ -119,4 +127,15 @@ public class Adapter_1_16_R3 implements IAdapter {
     public int getChunkTileEntityY(Object tileEntity) {
         return ((NbtCompound) tileEntity).getInteger("y");
     }
+
+    @Override
+    public int ceilLog2(int value) {
+        return MathHelper.e(value);
+    }
+
+    @Override
+    public int getBlockStateRegistrySize() {
+        return Block.REGISTRY_ID.a();
+    }
+
 }

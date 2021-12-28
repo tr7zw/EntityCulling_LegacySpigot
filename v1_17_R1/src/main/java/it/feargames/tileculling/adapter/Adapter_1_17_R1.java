@@ -1,6 +1,7 @@
 package it.feargames.tileculling.adapter;
 
 import com.comphenix.protocol.events.AbstractStructure;
+import com.comphenix.protocol.wrappers.nbt.NbtBase;
 import com.comphenix.protocol.wrappers.nbt.NbtCompound;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
@@ -11,6 +12,7 @@ import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Blocks;
 import org.bukkit.Location;
 import org.bukkit.block.*;
@@ -115,6 +117,12 @@ public class Adapter_1_17_R1 implements IAdapter {
 	}
 
 	@Override
+	public void writeChunkTileEntities(AbstractStructure chunkData, List<?> tileEntities) {
+		//noinspection unchecked
+		chunkData.getListNbtModifier().write(0, (List<NbtBase<?>>) tileEntities);
+	}
+
+	@Override
 	public String getChunkTileEntityType(Object tileEntity) {
 		return ((NbtCompound) tileEntity).getString("id");
 	}
@@ -128,4 +136,15 @@ public class Adapter_1_17_R1 implements IAdapter {
 	public int getChunkTileEntityY(Object tileEntity) {
 		return ((NbtCompound) tileEntity).getInteger("y");
 	}
+
+	@Override
+	public int ceilLog2(int value) {
+		return Mth.ceillog2(value);
+	}
+
+	@Override
+	public int getBlockStateRegistrySize() {
+		return net.minecraft.world.level.block.Block.BLOCK_STATE_REGISTRY.size();
+	}
+
 }
