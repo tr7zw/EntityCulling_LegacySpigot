@@ -4,6 +4,7 @@ import com.comphenix.protocol.events.AbstractStructure;
 import com.comphenix.protocol.events.PacketContainer;
 import io.netty.buffer.ByteBuf;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
@@ -44,4 +45,7 @@ public interface IAdapter {
 
 	int getBlockStateRegistrySize();
 
+	default boolean hasVerticalBiomes() {
+		return false;
+	}
 }

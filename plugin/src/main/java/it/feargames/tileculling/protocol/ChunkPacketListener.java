@@ -11,6 +11,7 @@ import it.feargames.tileculling.adapter.IAdapter;
 import it.feargames.tileculling.util.LocationUtilities;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 import java.util.Arrays;
@@ -36,18 +37,21 @@ public class ChunkPacketListener extends PacketAdapter {
 		Player player = event.getPlayer();
 		PacketContainer packet = event.getPacket();
 
+		World world = player.getWorld();
+		int sectionsCount = (int) Math.ceil((world.getMaxHeight() - world.getMinHeight()) / 16F);
+
 		int chunkX = packet.getIntegers().read(0);
 		int chunkZ = packet.getIntegers().read(1);
 		long chunkKey = LocationUtilities.getChunkKey(chunkX, chunkZ);
 		if (packet.getType() == PacketType.Play.Server.MAP_CHUNK) {
-			transformPacket(packet);
+			transformPacket(packet, sectionsCount);
 			playerChunkTracker.trackChunk(player, chunkKey);
 		} else if (packet.getType() == PacketType.Play.Server.UNLOAD_CHUNK) {
 			playerChunkTracker.untrackChunk(player, chunkKey);
 		}
 	}
 
-	public void transformPacket(PacketContainer packet) {
+	public void transformPacket(PacketContainer packet, int sectionsCount) {
 		//long start = System.nanoTime();
 		//int chunkX = packet.getIntegers().read(0);
 		//int chunkZ = packet.getIntegers().read(1);
@@ -103,27 +107,29 @@ public class ChunkPacketListener extends PacketAdapter {
 			return;
 		}
 
-		adapter.writeChunkTileEntities(chunkData, tileEntities);
+		adapter.writeChunkTileEntities(chunkData, tileEntities); // TODO: not sure this is required
 
 		ByteBuf reader = adapter.packetDataSerializer(Unpooled.wrappedBuffer(chunkBuffer));
 		ByteBuf writer = adapter.packetDataSerializer(Unpooled.buffer(chunkBuffer.length));
 
-		for (int sectionY = 0; sectionY < 16; sectionY++) {
+		for (int sectionY = 0; sectionY < sectionsCount; sectionY++) {
 			if (bitMask != -1 && (bitMask & (1 << sectionY)) == 0) {
 				continue;
 			}
 
-			short nonAirBlockCount = reader.readShort(); // TODO: Should decrease as we hide blocks?
+			short nonAirBlockCount = reader.readShort(); // TODO: Should decrease as we hide blocks? (shouldn't cause issues anyway)
 			writer.writeShort(nonAirBlockCount);
 
+			// Block data
 			int bitsPerBlock = reader.readByte();
-			System.err.println("BPB: " + bitsPerBlock);
+			//System.err.println("BPB: " + bitsPerBlock);
 			writer.writeByte(bitsPerBlock);
 
 			int paletteAirIndex;
 			if (bitsPerBlock == 0) {
-				// Empty chunk
+				// Single valued palette
 				paletteAirIndex = 0; // Global index
+				adapter.writeVarInt(writer, adapter.readVarInt(reader));
 			} else if (bitsPerBlock >= 9) {
 				// Global palette
 				bitsPerBlock = adapter.ceilLog2(adapter.getBlockStateRegistrySize());
@@ -171,8 +177,7 @@ public class ChunkPacketListener extends PacketAdapter {
 				dataArray[i] = reader.readLong();
 			}
 
-			if (bitsPerBlock != 0) { // Ignore if chunk is "empty"
-				//int individualValueMask = ((1 << bitsPerBlock) - 1);
+			if (bitsPerBlock != 0) { // Ignore single palette chunks (empty chunks)
 				byte blocksPerLong = (byte) (64 / bitsPerBlock);
 
 				for (byte y = 0; y < 16; y++) {
@@ -206,6 +211,11 @@ public class ChunkPacketListener extends PacketAdapter {
 			for (int i = 0; i < dataArrayLength; i++) {
 				writer.writeLong(dataArray[i]);
 			}
+
+			if (adapter.hasVerticalBiomes()) {
+				// Biome data
+				copyPalettedContainer(reader, writer);
+			}
 		}
 
 		// Replace data
@@ -213,5 +223,31 @@ public class ChunkPacketListener extends PacketAdapter {
 		chunkData.getByteArrays().write(0, chunkBuffer);
 
 		//plugin.getLogger().warning(chunkX + "," + chunkZ + ": Processed. Took " + (System.nanoTime() - start));
+	}
+
+	private void copyPalettedContainer(ByteBuf source, ByteBuf target) {
+		// Bits per block
+		int bitsPerBlock = source.readByte();
+		//System.err.println("BIOME BPB: " + bitsPerBlock);
+		target.writeByte(bitsPerBlock);
+
+		if (bitsPerBlock == 0) {
+			// Single valued
+			adapter.writeVarInt(target, adapter.readVarInt(source));
+		} else if (bitsPerBlock < 9) {
+			// With linear/hashmap palette
+			int paletteLength = adapter.readVarInt(source);
+			for (int i = 0; i < paletteLength; i++) {
+				adapter.writeVarInt(target, adapter.readVarInt(source));
+			}
+		} else {
+			// Global palette
+		}
+
+		int dataArrayLength = adapter.readVarInt(source);
+		adapter.writeVarInt(target, dataArrayLength);
+		for (int i = 0; i < dataArrayLength; i++) {
+			target.writeLong(source.readLong());
+		}
 	}
 }

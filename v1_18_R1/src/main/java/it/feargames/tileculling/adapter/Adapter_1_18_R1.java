@@ -2,7 +2,6 @@ package it.feargames.tileculling.adapter;
 
 import com.comphenix.protocol.events.AbstractStructure;
 import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.wrappers.nbt.NbtBase;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
@@ -245,6 +244,11 @@ public class Adapter_1_18_R1 implements IAdapter {
 	@Override
 	public int getBlockStateRegistrySize() {
 		return net.minecraft.world.level.block.Block.BLOCK_STATE_REGISTRY.size();
+	}
+
+	@Override
+	public boolean hasVerticalBiomes() {
+		return true;
 	}
 
 }
