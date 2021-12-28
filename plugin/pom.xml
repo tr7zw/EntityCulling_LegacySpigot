@@ -26,6 +26,11 @@
 			<version>1.2.3-SNAPSHOT</version>
 		</dependency>
 		<dependency>
+			<groupId>it.feargames.tileculling</groupId>
+			<artifactId>tileculling-v1_18_R1</artifactId>
+			<version>1.2.3-SNAPSHOT</version>
+		</dependency>
+		<dependency>
 			<groupId>com.logisticscraft</groupId>
 			<artifactId>occlusionculling</artifactId>
 			<version>0.0.5-SNAPSHOT</version>
@@ -34,6 +39,18 @@
 
 	<build>
 		<plugins>
+			<plugin>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>package-dependencies</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>analyze-only</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-shade-plugin</artifactId>

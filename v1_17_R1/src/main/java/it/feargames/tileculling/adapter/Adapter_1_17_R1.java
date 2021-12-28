@@ -1,17 +1,17 @@
 package it.feargames.tileculling.adapter;
 
-import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.events.AbstractStructure;
+import com.comphenix.protocol.wrappers.nbt.NbtCompound;
 import io.netty.buffer.ByteBuf;
-import net.minecraft.core.BlockPosition;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.network.PacketDataSerializer;
-import net.minecraft.network.protocol.game.PacketPlayOutBlockChange;
-import net.minecraft.network.protocol.game.PacketPlayOutMapChunk;
-import net.minecraft.network.protocol.game.PacketPlayOutTileEntityData;
-import net.minecraft.server.level.EntityPlayer;
-import net.minecraft.server.network.PlayerConnection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
+import net.minecraft.network.protocol.game.ClientboundLevelChunkPacket;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.IBlockData;
 import org.bukkit.Location;
 import org.bukkit.block.*;
 import org.bukkit.block.data.BlockData;
@@ -20,28 +20,30 @@ import org.bukkit.craftbukkit.v1_17_R1.block.data.CraftBlockData;
 import org.bukkit.craftbukkit.v1_17_R1.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 
+import java.util.List;
+
 public class Adapter_1_17_R1 implements IAdapter {
 
 	@Override
 	public void updateBlockState(Player player, Location location, BlockData blockData) {
 		CraftPlayer craftPlayer = (CraftPlayer) player;
-		EntityPlayer handlePlayer = craftPlayer.getHandle();
-		PlayerConnection connection = handlePlayer.b; // playerConnection
+		ServerPlayer handlePlayer = craftPlayer.getHandle();
+		ServerGamePacketListenerImpl connection = handlePlayer.connection;
 		if (connection == null) {
 			return;
 		}
 
-		BlockPosition blockPosition = new BlockPosition(location.getBlockX(), location.getBlockY(), location.getBlockZ());
-		IBlockData handleData = blockData == null ? Blocks.a.getBlockData() /* Blocks.AIR */ : ((CraftBlockData) blockData).getState();
-		PacketPlayOutBlockChange blockChange = new PacketPlayOutBlockChange(blockPosition, handleData);
-		connection.sendPacket(blockChange);
+		BlockPos blockPosition = new BlockPos(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+		net.minecraft.world.level.block.state.BlockState handleData = blockData == null ? Blocks.AIR.defaultBlockState() : ((CraftBlockData) blockData).getState();
+		ClientboundBlockUpdatePacket blockChange = new ClientboundBlockUpdatePacket(blockPosition, handleData);
+		connection.send(blockChange);
 	}
 
 	@Override
 	public void updateBlockData(Player player, Location location, BlockState block) {
 		CraftPlayer craftPlayer = (CraftPlayer) player;
-		EntityPlayer handlePlayer = craftPlayer.getHandle();
-		PlayerConnection connection = handlePlayer.b; // playerConnection
+		ServerPlayer handlePlayer = craftPlayer.getHandle();
+		ServerGamePacketListenerImpl connection = handlePlayer.connection;
 		if (connection == null) {
 			return;
 		}
@@ -78,32 +80,52 @@ public class Adapter_1_17_R1 implements IAdapter {
 		}
 
 		CraftBlockEntityState<?> craftBlockEntityState = (CraftBlockEntityState<?>) block;
-		NBTTagCompound nbt = craftBlockEntityState.getSnapshotNBT();
-		BlockPosition blockPosition = new BlockPosition(location.getBlockX(), location.getBlockY(), location.getBlockZ());
-		PacketPlayOutTileEntityData packet = new PacketPlayOutTileEntityData(blockPosition, action, nbt);
-		connection.sendPacket(packet);
+		CompoundTag nbt = craftBlockEntityState.getSnapshotNBT();
+		BlockPos blockPosition = new BlockPos(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+		ClientboundBlockEntityDataPacket packet = new ClientboundBlockEntityDataPacket(blockPosition, action, nbt);
+		connection.send(packet);
 	}
 
 	@Override
 	public ByteBuf packetDataSerializer(ByteBuf byteBuf) {
-		return new PacketDataSerializer(byteBuf);
+		return new FriendlyByteBuf(byteBuf);
 	}
 
 	@Override
 	public int readVarInt(ByteBuf byteBuf) {
-		PacketDataSerializer serializer = (PacketDataSerializer) byteBuf;
-		return serializer.j();
+		FriendlyByteBuf serializer = (FriendlyByteBuf) byteBuf;
+		return serializer.readVarInt();
 	}
 
 	@Override
 	public void writeVarInt(ByteBuf byteBuf, int value) {
-		PacketDataSerializer serializer = (PacketDataSerializer) byteBuf;
-		serializer.d(value);
+		FriendlyByteBuf serializer = (FriendlyByteBuf) byteBuf;
+		serializer.writeVarInt(value);
 	}
 
 	@Override
-	public int getChunkPacketBitmask(PacketContainer container) {
-		PacketPlayOutMapChunk packet = (PacketPlayOutMapChunk) container.getHandle();
-		return (int) packet.e().toLongArray()[0];
+	public int getChunkPacketBitmask(AbstractStructure container) {
+		ClientboundLevelChunkPacket packet = (ClientboundLevelChunkPacket) container.getHandle();
+		return (int) packet.getAvailableSections().toLongArray()[0];
+	}
+
+	@Override
+	public List<?> getChunkTileEntities(AbstractStructure chunkData) {
+		return chunkData.getListNbtModifier().read(0);
+	}
+
+	@Override
+	public String getChunkTileEntityType(Object tileEntity) {
+		return ((NbtCompound) tileEntity).getString("id");
+	}
+
+	@Override
+	public int getChunkTileEntityXZ(Object tileEntity) {
+		return (((NbtCompound) tileEntity).getInteger("x") & 0xF) << 4 | (((NbtCompound) tileEntity).getInteger("z") & 0xF);
+	}
+
+	@Override
+	public int getChunkTileEntityY(Object tileEntity) {
+		return ((NbtCompound) tileEntity).getInteger("y");
 	}
 }

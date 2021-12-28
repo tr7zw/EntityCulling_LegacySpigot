@@ -2,8 +2,6 @@ package it.feargames.tileculling.protocol;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.*;
-import com.comphenix.protocol.wrappers.nbt.NbtBase;
-import com.comphenix.protocol.wrappers.nbt.NbtCompound;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import it.feargames.tileculling.CullingPlugin;
@@ -54,21 +52,21 @@ public class ChunkPacketListener extends PacketAdapter {
 		//int chunkX = packet.getIntegers().read(0);
 		//int chunkZ = packet.getIntegers().read(1);
 
-		List<NbtBase<?>> tileEntities = packet.getListNbtModifier().read(0);
+		AbstractStructure chunkData = adapter.getChunkData(packet);
+
+		List<?> tileEntities = adapter.getChunkTileEntities(chunkData);
 		if (tileEntities.isEmpty()) {
 			return;
 		}
 
-
-		int bitMask = adapter.getChunkPacketBitmask(packet);
-		byte[] chunkData = packet.getByteArrays().read(0);
+		int bitMask = adapter.getChunkPacketBitmask(chunkData);
+		byte[] chunkBuffer = chunkData.getByteArrays().read(0);
 
 		IntSet removedBlocks = null;
-		for (Iterator<NbtBase<?>> iterator = tileEntities.iterator(); iterator.hasNext(); ) {
-			NbtBase<?> tileEntity = iterator.next();
-			NbtCompound compound = (NbtCompound) tileEntity;
+		for (Iterator<?> iterator = tileEntities.iterator(); iterator.hasNext(); ) {
+			Object tileEntity = iterator.next();
 
-			String type = compound.getString("id");
+			String type = adapter.getChunkTileEntityType(tileEntity);
 			if (!hiddenTileRegistry.shouldHide(type)) {
 				continue;
 			}
@@ -88,11 +86,12 @@ public class ChunkPacketListener extends PacketAdapter {
 			System.err.println("===========================================");
 			*/
 
-			int rawY = compound.getInteger("y");
+			int rawY = adapter.getChunkTileEntityY(tileEntity);
 			byte section = (byte) (rawY >> 4);
-			byte x = (byte) (compound.getInteger("x") & 0xF);
+			int packedXY = adapter.getChunkTileEntityXZ(tileEntity);
+			byte x = (byte) (packedXY & 0xF);
 			byte y = (byte) (rawY & 0xF);
-			byte z = (byte) (compound.getInteger("z") & 0xF);
+			byte z = (byte) ((packedXY >> 4) & 0xF);
 
 			int key = section + (x << 8) + (y << 16) + (z << 24);
 			removedBlocks.add(key);
@@ -104,20 +103,20 @@ public class ChunkPacketListener extends PacketAdapter {
 			return;
 		}
 
-		packet.getListNbtModifier().write(0, tileEntities);
+		//chunkData.getListNbtModifier().write(0, tileEntities); TODO: can be removed?
 
-		ByteBuf reader = adapter.packetDataSerializer(Unpooled.wrappedBuffer(chunkData));
-		ByteBuf writer = adapter.packetDataSerializer(Unpooled.buffer(chunkData.length));
+		ByteBuf reader = adapter.packetDataSerializer(Unpooled.wrappedBuffer(chunkBuffer));
+		ByteBuf writer = adapter.packetDataSerializer(Unpooled.buffer(chunkBuffer.length));
 
 		for (int sectionY = 0; sectionY < 16; sectionY++) {
-			if ((bitMask & (1 << sectionY)) == 0) {
+			if (bitMask != -1 && (bitMask & (1 << sectionY)) == 0) {
 				continue;
 			}
 
-			short nonAirBlockCount = reader.readShort();
+			short nonAirBlockCount = reader.readShort(); // TODO: Should decrease as we hide blocks?
 			writer.writeShort(nonAirBlockCount);
 
-			byte bitsPerBlock = reader.readByte();
+			short bitsPerBlock = reader.readUnsignedByte();
 			if (bitsPerBlock < 4 || bitsPerBlock > 64) {
 				throw new RuntimeException("Invalid bits per block! (" + bitsPerBlock + ")");
 			}
@@ -192,8 +191,8 @@ public class ChunkPacketListener extends PacketAdapter {
 		}
 
 		// Replace data
-		chunkData = writer.array();
-		packet.getByteArrays().write(0, chunkData);
+		chunkBuffer = writer.array();
+		chunkData.getByteArrays().write(0, chunkBuffer);
 
 		//plugin.getLogger().warning(chunkX + "," + chunkZ + ": Processed. Took " + (System.nanoTime() - start));
 	}

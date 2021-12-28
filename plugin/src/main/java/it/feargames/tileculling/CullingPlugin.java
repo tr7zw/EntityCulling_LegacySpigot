@@ -35,6 +35,7 @@ public class CullingPlugin extends JavaPlugin {
 
         try {
             String nmsVersion = getServer().getClass().getName().split("\\.")[3].substring(1);
+            getLogger().info("Loading NMS adapter: " + nmsVersion);
             //noinspection unchecked
             Class<? extends IAdapter> adapterClass = (Class<? extends IAdapter>) Class.forName("it.feargames.tileculling.adapter.Adapter_" + nmsVersion);
             Objects.requireNonNull(adapterClass, "Missing NMS adapter for this MC version!");
